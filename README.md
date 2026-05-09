@@ -1,4 +1,4 @@
-Crackd — AI POwered Placement Assistance Platform
+Crackd — AI Powered Placement Assistance Platform
 Crackd is a full-stack MERN application that helps students log interview experiences, track company-specific preparation, and generate AI-powered study roadmaps.
 
 Key Features:
