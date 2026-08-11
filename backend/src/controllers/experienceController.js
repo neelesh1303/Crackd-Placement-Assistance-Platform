@@ -2,6 +2,12 @@ const Experience = require("../models/Experience");
 const Company = require("../models/Company");
 const User = require("../models/User");
 
+const normalizeSlug = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
 
 //exports filtered experiences to the frontend
 exports.getExperiences = async (req, res) => { //getExperiences function ka use placement experiences ko retrieve karne ke liye kiya jata hai. is function me hum query parameters ke through filtering options provide karte hain, jaise company, year, aur role. ye function database se experiences ko filter karke, unke sath company aur user details ko populate karke, aur unhe createdAt ke descending order me sort karke return karta hai. isse frontend me users ko relevant placement experiences dikhaye ja sakte hain based on unke search criteria.
@@ -56,14 +62,50 @@ exports.createExperience = async (req, res) => {
       })
     );
 
-    const payload = { //payload object banaya jata hai jisme request body ke sare fields ko spread operator ke through include kiya jata hai, aur sath hi postedBy field me current user ka id set kiya jata hai, aur isSenior field me current user ke isSenior status ko Boolean me convert karke set kiya jata hai. is payload object ko fir Experience model ke create method me use karke naya experience document database me create kiya jata hai. isse hume experience create karte waqt automatically postedBy aur isSenior fields set ho jate hain based on the current logged-in user, jo ki data consistency aur integrity ke liye important hai.
+    const companyInput = String(req.body.company || "").trim();
+    let companyId = null;
+
+    if (companyInput) {
+      const slug = normalizeSlug(companyInput);
+      let companyDoc = slug
+        ? await Company.findOne({ slug })
+        : null;
+
+      if (!companyDoc) {
+        companyDoc = await Company.findOne({
+          name: { $regex: `^${companyInput}$`, $options: "i" },
+        });
+      }
+
+      if (!companyDoc) {
+        let finalSlug = slug || `company-${Date.now()}`;
+        let suffix = 0;
+        while (await Company.exists({ slug: finalSlug })) {
+          suffix += 1;
+          finalSlug = `${slug || `company-${Date.now()}`}-${suffix}`;
+        }
+        companyDoc = await Company.create({
+          name: companyInput,
+          slug: finalSlug,
+          visitMonth: String(req.body.visitMonth || "").trim(),
+          visitYear: req.body.visitYear ? Number(req.body.visitYear) : null,
+          difficulty: "Medium",
+        });
+      }
+
+      companyId = companyDoc._id;
+    }
+
+    const payload = {
       ...req.body,
+      company: companyId,
       rounds: normalizedRounds,
       postedBy: req.user.id,
       isSenior: Boolean(currentUser?.isSenior),
     };
 
     const experience = await Experience.create(payload);
+    await experience.populate("company", "slug");
 
     res.status(201).json({
       success: true,

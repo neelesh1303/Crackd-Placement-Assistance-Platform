@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react"; //useEffect is used to perform side effects in functional components, such as fetching data from an API when the component mounts. useState is used to manage state in functional components, allowing us to store and update values that affect the component's rendering. useMemo is used to memoize expensive calculations or derived data, so that they are only recomputed when their dependencies change, improving performance by avoiding unnecessary recalculations on every render.
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import api from "../services/api"; //api is an instance of axios that we have configured to include the base URL for our backend API and to automatically include the JWT token in the Authorization header for all requests. by importing this api instance, we can easily make HTTP requests to our backend without having to worry about setting the base URL or headers each time.
+import api from "../services/api";
 import CompanyCard from "../components/CompanyCard";
+import PageShell from "../components/PageShell";
 
 function Companies() {
   const [companies, setCompanies] = useState([]);
@@ -39,37 +40,30 @@ function Companies() {
   }, [companies, search]); //filteredCompanies variable me companies ko filter karke store kiya gaya hai, based on the search query. is filtering logic me company ke name, roles, aur difficulty level ko check kiya jata hai, aur agar search query inme se kisi me match hoti hai to wo company filteredCompanies me include ho jati hai. useMemo ka use karke ye ensure kiya gaya hai ki ye filtering logic tabhi run ho jab companies ya search state change ho, taki performance optimize ho.
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0b1220] text-white">
-      <div className="mx-auto w-full max-w-6xl container-glass p-8">
-        <div className="-mx-8 -mt-8 mb-8 h-1 bg-gradient-to-r from-sky-500 via-indigo-500 to-emerald-400" />
-
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="mb-2 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">
-              Company Explorer
-            </p>
-            <h1 className="page-title mb-2 text-blue-900">Companies</h1>
-            <p className="page-subtitle">Search by company name, role, or difficulty.</p>
-          </div>
-
-          <Link to="/add-experience" className="btn-primary whitespace-nowrap">
-            + Add Experience
-          </Link>
-        </div>
-
+    <PageShell
+      title="Companies"
+      subtitle="Search companies by name, role, or difficulty."
+      activeTab="companies"
+      actions={
+        <Link to="/add-experience" className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
+          + Add Experience
+        </Link>
+      }
+    >
+      <div className="space-y-6">
         <input
           type="text"
           placeholder="Search companies, roles, difficulty..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)} //search input field ke value ko search state se bind kiya gaya hai, aur onChange event me setSearch function call karke search state update kiya jata hai. isse jab user search input me kuch type karega to search state update hoga, aur uske basis par filteredCompanies variable re-compute hoga, jisse UI me filtered list of companies dikhai degi.
-          className="input mb-6 shadow-soft"
+          onChange={(e) => setSearch(e.target.value)}
+          className="input w-full shadow-soft"
         />
 
-        {loading && <p className="text-slate-600">Loading companies...</p>} 
-        {error && <p className="text-red-600">{error}</p>}
+        {loading && <p className="text-slate-400">Loading companies...</p>}
+        {error && <p className="text-rose-400">{error}</p>}
 
         {!loading && !error && filteredCompanies.length === 0 && (
-          <p className="text-slate-600">No companies found.</p>
+          <p className="text-slate-400">No companies found.</p>
         )}
 
         {!loading && !error && filteredCompanies.length > 0 && (
@@ -80,7 +74,7 @@ function Companies() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 

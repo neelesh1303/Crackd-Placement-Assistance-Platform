@@ -57,7 +57,7 @@ userSchema.pre("save", async function () { //this is a middleware which is calle
 
 // Method to compare passwords during login
 userSchema.methods.matchPassword = async function (enteredPassword) {
-  return bcrypt.compare(enteredPassword, this.password);
+  return bcrypt.compare(enteredPassword, this.password); //this ka use karke current user ke password ko access karte hain, aur bcrypt.compare method se entered password ko hashed password ke sath compare karte hain. agar match hota hai to true return hota hai, otherwise false.
 };
 
 module.exports = mongoose.model("User", userSchema);

@@ -19,7 +19,7 @@ const roundSchema = new mongoose.Schema( //roundSchema is a subdocument schema, 
 const experienceSchema = new mongoose.Schema( //experienceSchema is the main schema which represents the placement experience shared by users. isme company reference, role, year, ctc, cgpa cutoff, postedBy user reference, isSenior flag, rounds details, tips, resources, gotOffer flag, prepTime aur upvotes fields store kiye jate hain. ye schema users ke dwara share kiye gaye placement experiences ko structure karta hai aur database me store karta hai.
   {
     company: {
-      type: mongoose.Schema.Types.ObjectId, //company field me company ke ObjectId reference ko store kiya jata hai jisse fir se compkany details na store karni pade, aur jab experience data retrieve karte hain to populate karke company ke details fetch kar sakte hain. isse data normalization hoti hai, aur database me redundancy kam hoti hai.
+      type: mongoose.Schema.Types.ObjectId, //company field me company ke ObjectId reference ko store kiya jata hai jisse fir se company details na store karni pade, aur jab experience data retrieve karte hain to populate karke company ke details fetch kar sakte hain. isse data normalization hoti hai, aur database me redundancy kam hoti hai.
       ref: "Company", //company field me Company model ka reference store kiya jata hai, jisse hum easily populate karke company ke details fetch kar sakte hain jab experience data retrieve karte hain. isse hume company ke name, logo, roles, visit month, aur difficulty level jaise information mil sakti hai experience ke sath.
       required: true,
     },
@@ -27,12 +27,14 @@ const experienceSchema = new mongoose.Schema( //experienceSchema is the main sch
     year: { type: Number, required: true },
     ctc: { type: String, default: "", trim: true },
     cgpaCutoff: { type: Number, default: null },
+    visitMonth: { type: String, default: "", trim: true },
+    visitYear: { type: Number, default: null },
     postedBy: {
       type: mongoose.Schema.Types.ObjectId, //postedBy field me user ke ObjectId reference ko store kiya jata hai jisse fir se user details na store karni pade, aur jab experience data retrieve karte hain to populate karke user ke details fetch kar sakte hain. isse data normalization hoti hai, aur database me redundancy kam hoti hai. isse hume experience ke sath user ke name, email, branch, year, aur isSenior status jaise information mil sakti hai.
       ref: "User",
       required: true,
     },
-    isSenior: { type: Boolean, default: false }, //default value false set kiya gaya hai, taki agar user ne is field ko specify nahi kiya to wo automatically false ho jaye.
+    isSenior: { type: Boolean, default: true }, //default value false set kiya gaya hai, taki agar user ne is field ko specify nahi kiya to wo automatically false ho jaye.
     rounds: [roundSchema], 
     tips: { type: String, default: "" },
     resources: [{ type: String, trim: true }],

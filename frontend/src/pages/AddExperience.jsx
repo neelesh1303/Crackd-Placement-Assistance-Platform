@@ -1,9 +1,8 @@
-import { useState } from "react"; //to manage form state and other local states in the component
-import { useNavigate } from "react-router-dom"; //to navigate bw pages
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import PageShell from "../components/PageShell";
 import RoundInput from "../components/RoundInput";
-  // Fetch companies on mount
-import { useEffect } from "react"; //to fetch list of companies from backend when component mounts, taki user experience create karte waqt company select kar sake. useEffect hook ke andar hum ek async function define karenge jo /companies endpoint se data fetch karega, aur usse companies state me set karega. ye companies state fir company select dropdown me use hogi.
 
 function AddExperience() {
   const navigate = useNavigate();
@@ -15,6 +14,8 @@ function AddExperience() {
     company: "",
     role: "",
     year: "",
+    visitMonth: "",
+    visitYear: "",
     ctc: "",
     cgpaCutoff: "",
     rounds: [
@@ -62,10 +63,12 @@ function AddExperience() {
     const companyOk = String(form.company || "").trim().length > 0;
     const roleOk = String(form.role || "").trim().length > 0;
     const yearNum = Number(form.year);
-    const yearOk = Number.isInteger(yearNum) && yearNum >= 2000 && yearNum <= 2100;
+    const hasCalendarYear = Number.isInteger(yearNum) && yearNum >= 2000 && yearNum <= 2100;
+    const hasStudyYear = Number.isInteger(yearNum) && yearNum >= 1 && yearNum <= 10;
+    const yearOk = hasCalendarYear || hasStudyYear;
 
     if (!companyOk || !roleOk || !yearOk) {
-      setError("Please fill Company, Role, and a valid Year (e.g., 2026)");
+      setError("Please fill Company, Role, and a valid Year (e.g., 2026 or 4)");
       return;
     }
 
@@ -107,10 +110,12 @@ function AddExperience() {
     const companyOk = String(form.company || "").trim().length > 0;
     const roleOk = String(form.role || "").trim().length > 0;
     const yearNum = Number(form.year);
-    const yearOk = Number.isInteger(yearNum) && yearNum >= 2000 && yearNum <= 2100;
+    const hasCalendarYear = Number.isInteger(yearNum) && yearNum >= 2000 && yearNum <= 2100;
+    const hasStudyYear = Number.isInteger(yearNum) && yearNum >= 1 && yearNum <= 10;
+    const yearOk = hasCalendarYear || hasStudyYear;
 
     if (!companyOk || !roleOk || !yearOk) {
-      setError("Company, role, and year are required");
+      setError("Company, role, and a valid year are required");
       return false;
     }
     if (form.rounds.some((r) => !r.roundNo || !r.type)) { //ye validation check karega ki rounds array me koi bhi round aisa to nahi jisme roundNo ya type missing ho. agar aisa round milta hai to error message set karega aur validation fail kar dega. isse ensure hoga ki har round ke liye basic details provide ki gayi hain, jo ki experience ke liye important hai.
@@ -140,12 +145,12 @@ function AddExperience() {
       const res = await api.post("/experiences", payload);
 
       if (res.status === 201) {
-        const selectedCompany = companies.find((c) => c._id === form.company); //jab experience successfully create ho jata hai to user ko us company ke page par navigate karne ke liye, pehle hum companies array me se us company ko find karenge jiska _id form.company ke barabar ho. isse hume selectedCompany object mil jayega, jisme company ke details honge, including slug. fir navigate function ka use karke user ko "/companies/" + selectedCompany.slug URL par le jayenge, taki wo us company ke detail page par apna experience dekh sake. agar selectedCompany nahi milta hai (jo ki unlikely hai kyunki user ne dropdown se company select ki hogi), to fallback ke roop me "/companies" URL par navigate kar denge, jahan user saari companies dekh sakta hai.
-if (selectedCompany?.slug) {
-navigate("/companies/" + selectedCompany.slug);
-} else {
-navigate("/companies");
-}
+        const savedCompanySlug = res.data.experience?.company?.slug;
+        if (savedCompanySlug) {
+          navigate("/companies/" + savedCompanySlug);
+        } else {
+          navigate("/companies");
+        }
       }
     } catch (err) {
       setError(err.response?.data?.message || "Failed to create experience");
@@ -155,9 +160,22 @@ navigate("/companies");
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8">
-      <div className="mx-auto w-full max-w-2xl">
-        <h1 className="mb-6 text-3xl font-bold text-slate-900">
+    <PageShell
+      title="Add Experience"
+      subtitle="Share your interview story and help the community prepare better."
+      activeTab="experience"
+      actions={
+        <button
+          type="button"
+          onClick={() => navigate("/companies")}
+          className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+        >
+          Browse Companies
+        </button>
+      }
+    >
+      <div className="mx-auto w-full max-w-2xl space-y-6">
+        <h1 className="mb-6 text-3xl font-bold text-slate-900 text-white">
           Add Your Experience
         </h1>
 
@@ -170,19 +188,14 @@ navigate("/companies");
               Step 1: Basic Details
             </h2>
             <label className="mb-1 block text-sm font-medium text-slate-700">Company</label>
-            <select
+            <textarea
               name="company"
               value={form.company}
               onChange={handleBasicChange}
-              className="mb-4 w-full rounded border border-slate-300 px-3 py-2"
-            >
-              <option value="">Select Company</option>
-              {companies.map((c) => (
-                <option key={c._id} value={c._id}> 
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              rows={3}
+              placeholder="Enter company name"
+              className="mb-4 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+            />
 
             <label className="mb-1 block text-sm font-medium text-slate-700">Role</label>
             <input
@@ -194,15 +207,63 @@ navigate("/companies");
               className="mb-4 w-full rounded border border-slate-300 px-3 py-2"
             />
 
-            <label className="mb-1 block text-sm font-medium text-slate-700">Year</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Year (calendar or study year)</label>
             <input
               type="number"
               name="year"
-              placeholder="Year"
+              placeholder="Year or study year"
               value={form.year}
-              onChange={handleBasicChange} //handleBasicChange function ke through year input field ke value ko form state me update kiya jata hai, taki jab user year input field me kuch type kare to form state me uska updated value reflect ho jaye.
+              onChange={handleBasicChange}
               className="mb-4 w-full rounded border border-slate-300 px-3 py-2"
             />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Visit Month</label>
+                <select
+                  name="visitMonth"
+                  value={form.visitMonth}
+                  onChange={handleBasicChange}
+                  className="mb-4 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Select month</option>
+                  {[
+                    "January",
+                    "February",
+                    "March",
+                    "April",
+                    "May",
+                    "June",
+                    "July",
+                    "August",
+                    "September",
+                    "October",
+                    "November",
+                    "December",
+                  ].map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Visit Year</label>
+                <select
+                  name="visitYear"
+                  value={form.visitYear}
+                  onChange={handleBasicChange}
+                  className="mb-4 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Select year</option>
+                  {Array.from({ length: 12 }, (_, idx) => new Date().getFullYear() - 2 + idx).map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
             <label className="mb-1 block text-sm font-medium text-slate-700">CTC</label>
             <input
@@ -338,7 +399,7 @@ navigate("/companies");
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 

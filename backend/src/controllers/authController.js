@@ -56,7 +56,7 @@ exports.login = async (req, res) => {
     }
 
     // Check for user
-    const user = await User.findOne({ email }).select("+password"); //finds a usrer with the given email and also selects the password field which is not selected by default in the User model. This is necessary to compare the entered password with the hashed password stored in the database.
+    const user = await User.findOne({ email }).select("+password"); //finds a user with the given email and also selects the password field which is not selected by default in the User model. This is necessary to compare the entered password with the hashed password stored in the database.
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }

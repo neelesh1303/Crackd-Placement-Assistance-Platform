@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken"); //jsonwebtoken library import ki
 
-const protect = (req, res, next) => { //express middleware that protects royte. only logged in users allowed
+const protect = (req, res, next) => { //express middleware that protects route. only logged in users allowed
   let token;
 
   // Get token from Authorization header (Bearer <token>)

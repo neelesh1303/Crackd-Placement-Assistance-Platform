@@ -31,12 +31,21 @@ const RoadmapDetailsPage = () => {
         const topicsSet = new Set();
         
         experiences.forEach((exp) => {
-          // If experience has topics or problems associated with it, add them
+          // If experience has problems or topics associated with it, add them
           if (exp.rounds && Array.isArray(exp.rounds)) {
             exp.rounds.forEach((round) => {
-              if (round.questions && Array.isArray(round.questions)) {
-                round.questions.forEach((q) => {
-                  if (q.topic) topicsSet.add(q.topic);
+              if (round.problemsAsked && Array.isArray(round.problemsAsked)) {
+                round.problemsAsked.forEach((problem) => {
+                  if (typeof problem === "string" && problem.trim()) {
+                    topicsSet.add(problem.trim());
+                  }
+                });
+              }
+              if (round.topics && Array.isArray(round.topics)) {
+                round.topics.forEach((topic) => {
+                  if (typeof topic === "string" && topic.trim()) {
+                    topicsSet.add(topic.trim());
+                  }
                 });
               }
             });

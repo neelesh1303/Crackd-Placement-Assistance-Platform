@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import PageShell from "../components/PageShell";
 import CompanyLabel from "../components/CompanyLabel";
 import { useAuth } from "../context/AuthContext";
 
@@ -230,29 +231,48 @@ function Dashboard() {
 
   // Main dashboard
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="flex-1 p-6">
-        <div className="mx-auto max-w-7xl">
-          {/* Header */}
-          <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2">📊 Crackd</h1>
-              <p className="text-slate-300">
-                Where preparation meets opportunity
-              </p>
-            </div>
+    <PageShell
+      title="Dashboard"
+      subtitle="Quick access to companies, progress, roadmaps, and your weekly study plan."
+      activeTab="dashboard"
+      actions={
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+        >
+          Sign Out
+        </button>
+      }
+    >
+      <div className="space-y-10">
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">📊 Crackd</h1>
+            <p className="text-slate-300 max-w-2xl">
+              A polished prep dashboard built for placements. Navigate between companies, progress, experiences, and AI roadmap tools.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
             <button
-              onClick={handleSignOut}
-              className="rounded-lg border border-slate-500 bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+              onClick={() => navigate("/companies")}
+              className="rounded-full border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              Sign Out
+              Companies
+            </button>
+            <button
+              onClick={() => navigate("/progress")}
+              className="rounded-full border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Progress
             </button>
           </div>
-
+        </div>
+          {/* Header */}
         {/* Stats Cards */}
         {activeTab === "overview" && (
           <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-fadeInUp">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-fade-up">
             <div className="relative rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 p-8 text-white shadow-2xl overflow-hidden group hover-lift">
               <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-500"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16"></div>
@@ -302,7 +322,7 @@ function Dashboard() {
               <span className="text-3xl">⭐</span> Quick Actions & Insights
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <div onClick={() => navigate('/companies')} className="relative rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 p-6 cursor-pointer group hover:border-cyan-500/80 hover:from-cyan-500/30 hover:to-blue-500/30 transition-all duration-300 hover-scale">
+              <div onClick={() => navigate('/companies')} className="relative rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 p-6 cursor-pointer group hover:border-cyan-500/80 hover:from-cyan-500/30 hover:to-blue-500/30 transition-all duration-300 hover:-translate-y-1 transform">
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-white/0 to-cyan-500/0 group-hover:from-cyan-500/10 group-hover:via-white/10 group-hover:to-cyan-500/10 rounded-xl transition-all duration-300"></div>
                 <div className="relative z-10">
                   <p className="text-4xl mb-3">📚</p>
@@ -311,7 +331,7 @@ function Dashboard() {
                 </div>
               </div>
 
-              <div onClick={() => navigate('/progress')} className="relative rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/40 p-6 cursor-pointer group hover:border-purple-500/80 hover:from-purple-500/30 hover:to-pink-500/30 transition-all duration-300 hover-scale">
+              <div onClick={() => navigate('/progress')} className="relative rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/40 p-6 cursor-pointer group hover:border-purple-500/80 hover:from-purple-500/30 hover:to-pink-500/30 transition-all duration-300 hover:-translate-y-1 transform">
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 via-white/0 to-purple-500/0 group-hover:from-purple-500/10 group-hover:via-white/10 group-hover:to-purple-500/10 rounded-xl transition-all duration-300"></div>
                 <div className="relative z-10">
                   <p className="text-4xl mb-3">📈</p>
@@ -320,7 +340,7 @@ function Dashboard() {
                 </div>
               </div>
 
-              <div onClick={() => navigate('/roadmap')} className="relative rounded-xl bg-gradient-to-br from-green-500/20 to-teal-500/20 border border-green-500/40 p-6 cursor-pointer group hover:border-green-500/80 hover:from-green-500/30 hover:to-teal-500/30 transition-all duration-300 hover-scale">
+              <div onClick={() => navigate('/roadmap')} className="relative rounded-xl bg-gradient-to-br from-green-500/20 to-teal-500/20 border border-green-500/40 p-6 cursor-pointer group hover:border-green-500/80 hover:from-green-500/30 hover:to-teal-500/30 transition-all duration-300 hover:-translate-y-1 transform">
                 <div className="absolute inset-0 bg-gradient-to-r from-green-500/0 via-white/0 to-green-500/0 group-hover:from-green-500/10 group-hover:via-white/10 group-hover:to-green-500/10 rounded-xl transition-all duration-300"></div>
                 <div className="relative z-10">
                   <p className="text-4xl mb-3">🗺️</p>
@@ -412,7 +432,7 @@ function Dashboard() {
           {/* Main CTA Section */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-10 text-center shadow-2xl mb-10 animate-fadeInUp" style={{animationDelay: '0.4s'}}>
             <h2 className="text-3xl font-bold text-white mb-4">Ready to Start Your Preparation?</h2>
-            <p className="text-blue-100 mb-8 text-lg">Choose your next step and accelerate your placement journey</p>
+            <p className="text-blue-100 mb-8 text-lg">Choose your next step and accelerate your placement journey.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button onClick={() => navigate('/companies')} className="px-8 py-4 rounded-lg bg-white text-blue-600 font-bold hover:bg-blue-50 transition-all shadow-lg hover-lift">📚 Explore Companies</button>
               <button onClick={() => navigate('/roadmap')} className="px-8 py-4 rounded-lg bg-blue-700 text-white font-bold hover:bg-blue-800 transition-all shadow-lg hover-lift border border-white/20">🗺️ Generate Roadmap</button>
@@ -541,7 +561,6 @@ function Dashboard() {
             </div>
           )}
         </div>
-        </div>
       </div>
 
       {/* Footer */}
@@ -575,7 +594,7 @@ function Dashboard() {
           </div>
         </div>
       </footer>
-    </div>
+    </PageShell>
   );
 }
 

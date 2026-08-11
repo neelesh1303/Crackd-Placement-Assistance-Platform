@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const experienceRoutes = require("./routes/experienceRoutes");
+const analyticsRoutes = require("./routes/analyticsRoutes");
+const problemRoutes = require("./routes/problemRoutes");
 
 const roadmapRoutes = require("./routes/roadmapRoutes");
 const trackerRoutes = require("./routes/trackerRoutes");
@@ -16,6 +18,8 @@ app.get("/api/health", (req, res) => {
 });
 app.use("/api/roadmap", roadmapRoutes);
 app.use("/api/tracker", trackerRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/problems", problemRoutes);
 
 // Import auth routes
 const authRoutes = require("./routes/authRoutes");

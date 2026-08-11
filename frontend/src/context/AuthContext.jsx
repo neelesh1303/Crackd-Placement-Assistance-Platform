@@ -26,7 +26,10 @@ export const AuthProvider = ({ children }) => { //wrapper function. provides dat
 
   const fetchMe = async () => { // jab app load hota hai to hum is function ko call karenge, taki agar user already logged in hai to uska data fetch kar sake. is function me hum token check karenge, agar token available hai to hum /auth/me endpoint ko call karenge, aur user data fetch karenge. agar token invalid hai ya fetch me error aata hai to hum logout kar denge, taki user ko dobara login karna pade.
     try {
-      if (!token) return;
+      if (!token) {
+        setLoading(false);
+        return;
+      }
       const res = await api.get("/auth/me");
       setUser(res.data.user);
     } catch (error) { // agar error aata hai to logout kar denge, taki user ko dobara login karna pade.

@@ -51,7 +51,7 @@ const CompanyLabel = ({ company, name, logo, className = '', size = 'sm' }) => {
           <span className="text-white leading-none">{initials}</span>
         )}
       </div>
-      <span className={`font-medium text-slate-900 ${nameSizeClasses}`}>{displayName}</span>
+      <span className={`font-medium !text-white ${nameSizeClasses}`}>{displayName}</span>
     </div>
   );
 };

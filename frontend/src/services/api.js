@@ -1,7 +1,13 @@
 import axios from "axios";
 
+const defaultApiBase = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api`
+  : import.meta.env.MODE === "development"
+  ? "http://localhost:5000/api"
+  : "/api";
+
 const api = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL || ""}/api`, // Backend URL ko env se lo; deployment me localhost hard-code nahi rahega.
+  baseURL: defaultApiBase, // use explicit localhost backend in dev if env is not configured
 });
 
 api.interceptors.request.use( //axios middleware to add Authorization header with token for every request. jab bhi koi request bheji jayegi, to ye interceptor us request ko intercept karega, aur usme Authorization header add kar dega, jisme token hoga. isse hume har request me manually token add karne ki zarurat nahi padegi.

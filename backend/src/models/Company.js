@@ -30,6 +30,10 @@ const companySchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    visitYear: {
+      type: Number,
+      default: null,
+    },
     difficulty: {
       type: String,
       enum: ["Easy", "Medium", "Hard"],

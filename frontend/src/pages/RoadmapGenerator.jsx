@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import PageShell from "../components/PageShell";
 
 const STATES = ["todo", "in-progress", "done"];
 
@@ -192,41 +193,24 @@ function RoadmapGenerator() {
   const strongCount = getStrongTopics().length;
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard")}
-            className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
-          >
-            Dashboard
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/roadmap")}
-            className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white"
-          >
-            Roadmap
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/progress")}
-            className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
-          >
-            Progress Tracker
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/companies")}
-            className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
-          >
-            Companies
-          </button>
-        </div>
+    <PageShell
+      title="AI Roadmap Generator"
+      subtitle="Generate a personalized study plan and save it to your tracker."
+      activeTab="roadmap"
+      actions={
+        <button
+          type="button"
+          onClick={() => navigate("/dashboard")}
+          className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+        >
+          Dashboard
+        </button>
+      }
+    >
+      <div className="max-w-6xl mx-auto space-y-6">
 
-        <h1 className="mb-2 text-3xl font-bold text-slate-900">AI Roadmap Generator</h1>
-        <p className="mb-6 text-slate-600">
+
+        <p className="mb-6 text-slate-600 text-white">
            Select Topics then Generate a Personalized Roadmap 
         </p>
 
@@ -463,7 +447,7 @@ function RoadmapGenerator() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 
