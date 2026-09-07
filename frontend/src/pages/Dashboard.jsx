@@ -248,7 +248,7 @@ function Dashboard() {
       <div className="space-y-10">
         <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">📊 Crackd</h1>
+            <div className="dashboard-brand mb-2"><span>c</span>rackd<span className="brand-dot">.</span></div>
             <p className="text-slate-300 max-w-2xl">
               A polished prep dashboard built for placements. Navigate between companies, progress, experiences, and AI roadmap tools.
             </p>
@@ -273,7 +273,7 @@ function Dashboard() {
         {activeTab === "overview" && (
           <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-fade-up">
-            <div className="relative rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 p-8 text-white shadow-2xl overflow-hidden group hover-lift">
+            <div className="dashboard-stat-card relative rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 p-8 text-white shadow-2xl overflow-hidden group hover-lift">
               <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-500"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16"></div>
               <div className="relative z-10">
@@ -281,13 +281,13 @@ function Dashboard() {
                   <p className="text-blue-100 text-sm font-semibold uppercase tracking-wider">Total Experiences</p>
                   <span className="text-3xl">📊</span>
                 </div>
-                <p className="text-5xl font-black mb-2">{stats.totalExperiences}</p>
+                <p className="dashboard-stat-value text-5xl font-black mb-2">{stats.totalExperiences}</p>
                 <p className="text-blue-200 text-sm">Interview rounds completed</p>
                 <div className="mt-4 pt-4 border-t border-white/20 text-xs text-blue-100">Keep grinding! 💪</div>
               </div>
             </div>
 
-            <div className="relative rounded-2xl bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 p-8 text-white shadow-2xl overflow-hidden group hover-lift">
+            <div className="dashboard-stat-card relative rounded-2xl bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 p-8 text-white shadow-2xl overflow-hidden group hover-lift">
               <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-500"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16"></div>
               <div className="relative z-10">
@@ -295,13 +295,13 @@ function Dashboard() {
                   <p className="text-purple-100 text-sm font-semibold uppercase tracking-wider">Companies Visited</p>
                   <span className="text-3xl">🏢</span>
                 </div>
-                <p className="text-5xl font-black mb-2">{stats.companiesVisited}</p>
+                <p className="dashboard-stat-value text-5xl font-black mb-2">{stats.companiesVisited}</p>
                 <p className="text-purple-200 text-sm">Unique companies this year</p>
                 <div className="mt-4 pt-4 border-t border-white/20 text-xs text-purple-100">Diversify your prep! 🎯</div>
               </div>
             </div>
 
-            <div className="relative rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 p-8 text-white shadow-2xl overflow-hidden group hover-lift">
+            <div className="dashboard-stat-card relative rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 p-8 text-white shadow-2xl overflow-hidden group hover-lift">
               <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-500"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16"></div>
               <div className="relative z-10">
@@ -309,7 +309,7 @@ function Dashboard() {
                   <p className="text-emerald-100 text-sm font-semibold uppercase tracking-wider">Success Rate</p>
                   <span className="text-3xl">📈</span>
                 </div>
-                <p className="text-5xl font-black mb-2">{stats.totalExperiences > 0 ? Math.round((stats.companiesVisited / stats.totalExperiences) * 100) : 0}%</p>
+                <p className="dashboard-stat-value text-5xl font-black mb-2">{stats.totalExperiences > 0 ? Math.round((stats.companiesVisited / stats.totalExperiences) * 100) : 0}%</p>
                 <p className="text-emerald-200 text-sm">Company diversity ratio</p>
                 <div className="mt-4 pt-4 border-t border-white/20 text-xs text-emerald-100">You're doing great! ⭐</div>
               </div>
@@ -386,44 +386,44 @@ function Dashboard() {
 
           {/* Stats & Tips Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10 animate-fadeInUp" style={{animationDelay: '0.3s'}}>
-            <div className="rounded-xl border border-slate-700 bg-gradient-to-br from-slate-800/50 to-slate-900/50 p-6 backdrop-blur">
-              <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><span>📊</span> Year-wise Activity</h3>
+            <div className="activity-panel rounded-xl p-6">
+              <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><span>📊</span> Year-wise Activity</h3>
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-semibold text-slate-300">This Year</span>
-                    <span className="text-lg font-bold text-blue-400">{data.thisYear.length}</span>
+                    <span className="activity-label text-sm font-semibold">This Year</span>
+                    <span className="activity-value activity-value-blue text-lg font-bold">{data.thisYear.length}</span>
                   </div>
-                  <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-400 to-blue-600 h-full rounded-full transition-all duration-500" style={{width: `${Math.min((data.thisYear.length / Math.max(data.thisYear.length, data.lastYear.length, 1)) * 100, 100)}%`}}></div>
+                  <div className="activity-track w-full rounded-full h-3 overflow-hidden">
+                    <div className="activity-fill activity-fill-blue h-full rounded-full transition-all duration-500" style={{width: `${Math.min((data.thisYear.length / Math.max(data.thisYear.length, data.lastYear.length, 1)) * 100, 100)}%`}}></div>
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-semibold text-slate-300">Last Year</span>
-                    <span className="text-lg font-bold text-purple-400">{data.lastYear.length}</span>
+                    <span className="activity-label text-sm font-semibold">Last Year</span>
+                    <span className="activity-value activity-value-violet text-lg font-bold">{data.lastYear.length}</span>
                   </div>
-                  <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
-                    <div className="bg-gradient-to-r from-purple-400 to-purple-600 h-full rounded-full transition-all duration-500" style={{width: `${Math.min((data.lastYear.length / Math.max(data.thisYear.length, data.lastYear.length, 1)) * 100, 100)}%`}}></div>
+                  <div className="activity-track w-full rounded-full h-3 overflow-hidden">
+                    <div className="activity-fill activity-fill-violet h-full rounded-full transition-all duration-500" style={{width: `${Math.min((data.lastYear.length / Math.max(data.thisYear.length, data.lastYear.length, 1)) * 100, 100)}%`}}></div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-700 bg-gradient-to-br from-slate-800/50 to-slate-900/50 p-6 backdrop-blur">
-              <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><span>💡</span> Pro Tips</h3>
+            <div className="tips-panel rounded-xl p-6">
+              <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><span>💡</span> Pro Tips</h3>
               <div className="space-y-3">
-                <div className="flex gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                <div className="tip-row tip-row-blue flex gap-3 p-3 rounded-lg">
                   <span>✨</span>
-                  <p className="text-sm text-slate-300">Generate AI-powered roadmaps for each company</p>
+                  <p className="text-sm">Generate AI-powered roadmaps for each company</p>
                 </div>
-                <div className="flex gap-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                <div className="tip-row tip-row-violet flex gap-3 p-3 rounded-lg">
                   <span>📝</span>
-                  <p className="text-sm text-slate-300">Track your progress with daily streaks</p>
+                  <p className="text-sm">Track your progress with daily streaks</p>
                 </div>
-                <div className="flex gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                <div className="tip-row tip-row-green flex gap-3 p-3 rounded-lg">
                   <span>🎯</span>
-                  <p className="text-sm text-slate-300">Focus on weak topics before interviews</p>
+                  <p className="text-sm">Focus on weak topics before interviews</p>
                 </div>
               </div>
             </div>
@@ -564,32 +564,32 @@ function Dashboard() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-slate-700 bg-slate-800/50 p-6 mt-12">
+      <footer className="dashboard-footer p-6 mt-12">
         <div className="mx-auto max-w-7xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div>
-              <h3 className="text-white font-bold mb-2">About Crackd</h3>
-              <p className="text-slate-400 text-sm">
+              <h3 className="font-bold mb-2">About Crackd</h3>
+              <p className="text-sm">
                 Where preparation meets opportunity. 
                 
                 Track your placement journey and prepare for companies with personalized roadmaps.
               </p>
             </div>
             <div>
-              <h3 className="text-white font-bold mb-2">Quick Links</h3>
-              <ul className="space-y-1 text-slate-400 text-sm">
-                <li><button onClick={() => navigate('/companies')} className="hover:text-white transition">Companies</button></li>
-                <li><button onClick={() => navigate('/progress')} className="hover:text-white transition">Progress</button></li>
+              <h3 className="font-bold mb-2">Quick Links</h3>
+              <ul className="space-y-1 text-sm">
+                <li><button onClick={() => navigate('/companies')} className="hover:text-blue-600 transition">Companies</button></li>
+                <li><button onClick={() => navigate('/progress')} className="hover:text-blue-600 transition">Progress</button></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-white font-bold mb-2">Help & Support</h3>
-              <p className="text-slate-400 text-sm">
+              <h3 className="font-bold mb-2">Help & Support</h3>
+              <p className="text-sm">
                 Need help? Check the documentation or reach out to support.
               </p>
             </div>
           </div>
-          <div className="border-t border-slate-700 pt-6 text-center text-slate-400 text-sm">
+          <div className="dashboard-footer-bottom pt-6 text-center text-sm">
             <p>© 2026 Crackd. All rights reserved. Built for placement success.</p>
           </div>
         </div>

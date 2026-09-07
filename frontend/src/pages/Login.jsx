@@ -37,7 +37,7 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.14),_transparent_24%),linear-gradient(180deg,_#0f172a,_#1e293b)] text-white">
+    <div className="auth-page min-h-screen text-slate-950">
       <div className="mx-auto flex min-h-screen max-w-6xl items-center px-4 py-12 lg:px-8">
         <div className="grid w-full gap-10 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="rounded-[2rem] border border-white/10 bg-white/5 p-10 shadow-[0_32px_90px_rgba(15,23,42,0.24)] backdrop-blur-xl glass-card fade-up">

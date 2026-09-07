@@ -2,70 +2,49 @@ import { Link } from "react-router-dom";
 
 const Home = () => {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.12),_transparent_24%),radial-gradient(circle_at_bottom_left,_rgba(234,179,8,0.14),_transparent_24%),linear-gradient(180deg,_#f8fafc,_#e2e8f0)] text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-6 py-10 lg:px-8">
-        <div className="mb-14 grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <section className="space-y-6 rounded-[2rem] border border-slate-200 bg-white/90 p-10 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-            <span className="inline-flex rounded-full bg-sky-100 px-4 py-1 text-sm font-semibold text-sky-700">
-              Build your placement preparation strategy
-            </span>
-            <div className="space-y-4">
-              <h1 className="page-title text-slate-950">Crackd — your guided placement prep hub</h1>
-              <p className="max-w-2xl text-lg leading-8 text-slate-600">
-                Generate targeted study roadmaps, save progress, and explore real interview experience data from top companies. Designed for students who want a clean, smart preparation workflow.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link to="/login" className="btn-primary">
-                Login to get started
-              </Link>
-              <Link to="/register" className="btn-secondary">
-                Create account
-              </Link>
-            </div>
-          </section>
-
-          <section className="rounded-[2rem] border border-slate-200 bg-slate-950/95 p-8 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
-            <div className="mb-5 flex items-center justify-between rounded-3xl bg-slate-900/90 p-4">
-              <div>
-                <p className="text-sm uppercase tracking-[0.24em] text-sky-300">What you can do</p>
-              </div>
-              <div className="rounded-2xl bg-slate-800 px-3 py-2 text-xs text-slate-200">
-                Live-ready</div>
-            </div>
-            <ul className="space-y-4 text-sm leading-7">
-              <li className="rounded-2xl bg-slate-800/80 p-4">
-                <span className="font-semibold text-slate-100">Personalized Roadmaps</span>
-                <p className="mt-2 text-slate-400">Generate a tailored weekly plan for your target company, role, and topics.</p>
-              </li>
-              <li className="rounded-2xl bg-slate-800/80 p-4">
-                <span className="font-semibold text-slate-100">Progress Tracker</span>
-                <p className="mt-2 text-slate-400">Save your roadmap and convert it into a checklist with streak tracking.</p>
-              </li>
-              <li className="rounded-2xl bg-slate-800/80 p-4">
-                <span className="font-semibold text-slate-100">Company Experience Insights</span>
-                <p className="mt-2 text-slate-400">Explore real interview experiences and company-specific preparation cues.</p>
-              </li>
-            </ul>
-          </section>
+    <div className="home-page min-h-screen text-slate-950">
+      <div className="home-noise" />
+      <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-6 py-7 lg:px-8">
+        <Link to="/" className="brand-mark"><span>c</span>rackd<span className="brand-dot">.</span></Link>
+        <div className="flex items-center gap-3 text-sm font-semibold">
+          <span className="hidden text-slate-500 sm:inline">Your next interview starts here</span>
+          <Link to="/login" className="home-login">Log in <span aria-hidden="true">↗</span></Link>
         </div>
+      </header>
 
-        <section className="grid gap-6 rounded-[2rem] border border-slate-200 bg-white/90 p-10 shadow-[0_24px_80px_rgba(15,23,42,0.08)] lg:grid-cols-3">
-          <div className="space-y-3">
-            <h2 className="text-xl font-semibold text-slate-900">Why Crackd?</h2>
-            <p className="text-slate-600">A simple student-first platform to convert messy prep plans into trackable action.</p>
+      <main className="relative z-10 mx-auto max-w-7xl px-6 pb-16 pt-10 lg:px-8 lg:pt-20">
+        <section className="home-hero-grid">
+          <div className="home-hero-copy">
+            <div className="eyebrow"><span className="pulse-dot" /> Placement prep, with a pulse</div>
+            <h1>Turn your<br /><em>potential</em> into<br />an offer.</h1>
+            <p className="home-lede">A focused workspace for students who are done collecting resources and ready to prepare with intent.</p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link to="/register" className="home-cta">Build your prep plan <span aria-hidden="true">↗</span></Link>
+              <Link to="/login" className="home-text-link">I already have an account <span aria-hidden="true">→</span></Link>
+            </div>
           </div>
-          <div className="space-y-3 rounded-[1.75rem] bg-slate-50 p-6">
-            <p className="text-sm uppercase tracking-[0.22em] text-sky-700">Roadmap</p>
-            <p className="text-slate-700">Select weak topics, choose your target role, and generate a guided study schedule in seconds.</p>
-          </div>
-          <div className="space-y-3 rounded-[1.75rem] bg-slate-50 p-6">
-            <p className="text-sm uppercase tracking-[0.22em] text-sky-700">Tracker</p>
-            <p className="text-slate-700">Save your weekly plan, update checklist status, and keep streaks alive as you practice.</p>
+
+          <div className="home-visual" aria-label="Crackd preparation dashboard preview">
+            <div className="orbit orbit-one" /><div className="orbit orbit-two" />
+            <div className="signal-card">
+              <div className="signal-top"><span>YOUR PREP SIGNAL</span><span className="signal-live"><i /> LIVE</span></div>
+              <div className="signal-score">78<span>%</span></div>
+              <div className="signal-caption">interview readiness</div>
+              <div className="signal-chart"><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
+              <div className="signal-foot"><span>+12% this week</span><span>Keep the streak alive</span></div>
+            </div>
+            <div className="floating-note note-roadmap"><span className="note-icon">↗</span><div><strong>Roadmap ready</strong></div></div>
+            <div className="floating-note note-streak"><span className="note-icon note-fire">✦</span><div><strong>7 day streak</strong><small>Consistency compounds</small></div></div>
           </div>
         </section>
-      </div>
+
+        <section className="home-strip" aria-label="Crackd features">
+          <div className="strip-intro"><span>01</span><p>Everything you need to move from “I should prepare” to “I’m ready.”</p></div>
+          <div className="strip-item"><b>01</b><strong>Roadmaps that fit you</strong><span>Targeted plans for your role, company, and weak spots.</span></div>
+          <div className="strip-item"><b>02</b><strong>Progress you can see</strong><span>Small daily wins, visible momentum, real confidence.</span></div>
+          <div className="strip-item"><b>03</b><strong>Signals from the field</strong><span>Learn from interview experiences shared by peers.</span></div>
+        </section>
+      </main>
     </div>
   );
 };
