@@ -79,7 +79,6 @@ function Register() {
           </section>
 
           <form onSubmit={handleSubmit} className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/95 p-8 shadow-[0_32px_90px_rgba(15,23,42,0.24)] backdrop-blur-xl fade-up">
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-[radial-gradient(circle,_rgba(16,185,129,0.3),_transparent_80%)]" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[radial-gradient(circle,_rgba(59,130,246,0.18),_transparent_55%)]" />
 
             <div className="mb-6 flex items-center justify-between gap-4">
@@ -89,7 +88,7 @@ function Register() {
               </div>
               <Link
                 to="/login"
-                className="rounded-full border border-slate-700 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+                className="rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-white hover:text-slate-950"
               >
                 Already a member?
               </Link>
