@@ -3,12 +3,11 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import PageShell from "../components/PageShell";
 import CompanyLabel from "../components/CompanyLabel";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedCompany, setSelectedCompany] = useState(null);
-  const [experiences, setExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [stats, setStats] = useState({
@@ -110,7 +109,6 @@ function Dashboard() {
           predictedUpcoming: upcomingCompanies,
         });
 
-        setExperiences(allExperiences);
       } catch (err) {
         setError(err.response?.data?.message || "Failed to load data");
       } finally {

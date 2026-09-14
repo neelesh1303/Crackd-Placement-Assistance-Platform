@@ -34,9 +34,11 @@ function AddExperience() {
     prepTime: "",
   });
 
-  const [companies, setCompanies] = useState([]); //companies state to store list of companies fetched from backend. initially empty array. jab data fetch hota hai to usse setCompanies function ke through update kar denge, taki wo company select dropdown me dikhai de.
 
 
+
+  const [companies, setCompanies] = useState([]);
+  void companies;
 
   useEffect(() => {
     const fetchCompanies = async () => { //is function ka use hm companies data fetch karne ke liye karenge, taki user experience create karte waqt company select kar sake. ye function /companies endpoint se data fetch karega, aur usse companies state me set karega. ye companies state fir company select dropdown me use hogi.
@@ -44,7 +46,7 @@ function AddExperience() {
         const res = await api.get("/companies");
         setCompanies(res.data.companies || []); //jab companies data fetch hota hai to usse companies state me set kar denge, taki wo company select dropdown me dikhai de. agar res.data.companies undefined hai to default empty array use karenge, taki dropdown me koi option na aaye, lekin error na de.
       } catch (err) {
-        console.error("Failed to load companies");
+        console.error("Failed to load companies", err);
       }
     };
     fetchCompanies();

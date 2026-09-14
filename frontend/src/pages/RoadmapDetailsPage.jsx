@@ -55,8 +55,6 @@ const RoadmapDetailsPage = () => {
         setCompanyTopics(topicsSet);
       } catch (err) {
         const status = err.response?.status;
-        const msg = err.response?.data?.message || "Failed to load data";
-
         if (status === 404) {
           setError("no_tracker");
         } else {

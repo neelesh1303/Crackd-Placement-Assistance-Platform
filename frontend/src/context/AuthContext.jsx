@@ -2,10 +2,9 @@
 // You don’t have to pass user data everywhere manually
 
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../services/api";
-
-const AuthContext = createContext(); //like a global storage box 
+import AuthContext from "./authContextStore";
 
 export const AuthProvider = ({ children }) => { //wrapper function. provides data to child components
   const [user, setUser] = useState(null); //user state to store logged in user data. initially null, jab tak user login nahi karta. jab user login karega to uska data is state me store ho jayega. aur poori app me available hoga through context.
@@ -32,8 +31,10 @@ export const AuthProvider = ({ children }) => { //wrapper function. provides dat
       }
       const res = await api.get("/auth/me");
       setUser(res.data.user);
-    } catch (error) { // agar error aata hai to logout kar denge, taki user ko dobara login karna pade.
-      logout();
+    } catch { // agar error aata hai to logout kar denge, taki user ko dobara login karna pade.
+      setToken("");
+      setUser(null);
+      localStorage.removeItem("token");
     } finally {
       setLoading(false); // finally block me loading false kar denge, chahe fetch successful ho ya error aaye. taki app ko pata chale ki user data fetch ho chuka hai, aur loading state false ho jaye.
     }
@@ -41,6 +42,8 @@ export const AuthProvider = ({ children }) => { //wrapper function. provides dat
 
   useEffect(() => { // jab app load hota hai to fetchMe function ko call karenge, taki agar user already logged in hai to uska data fetch kar sake.
     fetchMe();
+  // Auth bootstrap should run once when the provider mounts.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -49,5 +52,3 @@ export const AuthProvider = ({ children }) => { //wrapper function. provides dat
     </AuthContext.Provider>
   ); //AuthContext.Provider component ke through hum user, token, loading, login, logout, fetchMe functions ko poori app me available karwa rahe hain. jahan bhi useAuth hook ka use karenge, wahan ye data available hoga.
 };
-
-export const useAuth = () => useContext(AuthContext);

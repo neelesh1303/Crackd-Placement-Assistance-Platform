@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom"; //useNavigate hook React Router v6 ka feature hai, jo hume programmatically navigate karne ki suvidha deta hai. jab user successful login karega, to hum useNavigate hook ka use karke user ko "/dashboard" route par redirect kar denge. isse user ko manually dashboard URL type karne ki zarurat nahi padegi, aur better user experience milega.
 // import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 function Register() {
   const navigate = useNavigate();

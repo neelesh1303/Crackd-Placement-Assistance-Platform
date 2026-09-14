@@ -6,7 +6,7 @@ If not logged in → redirect to login
 
 
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 const ProtectedRoute = ({ children }) => { //children is the protected component . if user is valid from token and loading is false, then we will show the children component. otherwise we will redirect to login page.
   const { token, loading } = useAuth();
