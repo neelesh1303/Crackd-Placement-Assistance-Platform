@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 // Generate JWT token
@@ -10,9 +11,10 @@ const generateToken = (id) => {
 exports.register = async (req, res) => {
   try {
     const { name, email, password, branch, year } = req.body;
+    const normalizedEmail = String(email || "").trim().toLowerCase();
 
     // Check if user already exists
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email: normalizedEmail }).select("_id").lean();
     if (user) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -20,7 +22,7 @@ exports.register = async (req, res) => {
     // Create user
     user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password,
       branch,
       year,
@@ -49,6 +51,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = String(email || "").trim().toLowerCase();
 
     // Validate email and password provided
     if (!email || !password) {
@@ -56,13 +59,15 @@ exports.login = async (req, res) => {
     }
 
     // Check for user
-    const user = await User.findOne({ email }).select("+password"); //finds a user with the given email and also selects the password field which is not selected by default in the User model. This is necessary to compare the entered password with the hashed password stored in the database.
+    const user = await User.findOne({ email: normalizedEmail })
+      .select("+password")
+      .lean(); // Only fetch the fields needed for authentication; avoid document hydration.
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // Check if password matches
-    const isMatch = await user.matchPassword(password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }

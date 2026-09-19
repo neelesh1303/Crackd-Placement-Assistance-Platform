@@ -6,6 +6,9 @@ const Company = require("../models/Company");
 // isliye default model Mistral rakha hai jo free tier me bhi kaam karta hai
 const HF_API_TOKEN = process.env.HF_API_TOKEN;
 const HF_MODEL = process.env.HF_MODEL || "mistralai/Mistral-7B-Instruct-v0.3";
+const HF_TIMEOUT_MS = Number(process.env.HF_TIMEOUT_MS) || 5000;
+const ROADMAP_CACHE_TTL_MS = 10 * 60 * 1000;
+const roadmapCache = new Map();
 
 // [DEBUG] Ye lines server start hone par token aur model log karti hain
 // Agar token "false" print ho raha hai to dotenv.config() check karo apne server.js/app.js me
@@ -210,9 +213,13 @@ async function callHuggingFace(prompt) {
     return null;
   }
 
-  const response = await fetch(
-    "https://router.huggingface.co/v1/chat/completions",
-    {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HF_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(
+      "https://router.huggingface.co/v1/chat/completions",
+      {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -227,44 +234,53 @@ async function callHuggingFace(prompt) {
         // Llama/Mistral pe ye parameter error ya empty response cause karta tha
         // JSON enforce karne ke liye ab prompt me hi instruction di gayi hai
       }),
-    }
-  );
+        signal: controller.signal,
+      }
+    );
 
-  if (!response.ok) {
+    if (!response.ok) {
     // HF API failure ka exact reason log karte hain taaki root cause samajh aaye
     // 401 = token galat, 403 = model access nahi, 404 = model exist nahi
     console.error(`[roadmap] Hugging Face API error: ${response.status} ${response.statusText}`);
     const errText = await response.text().catch(() => "");
     console.error(`[roadmap] Hugging Face error body: ${errText.slice(0, 2000)}`);
-    throw new Error(`Hugging Face API error ${response.status}`);
-  }
+      throw new Error(`Hugging Face API error ${response.status}`);
+    }
 
-  const data = await response.json().catch((err) => {
+    const data = await response.json().catch((err) => {
     console.error(`[roadmap] Failed to parse Hugging Face JSON response: ${err.message}`);
     return null;
-  });
+    });
 
-  if (data) {
+    if (data) {
     try {
       console.debug(`[roadmap] Hugging Face raw response: ${JSON.stringify(data).slice(0, 2000)}`);
     } catch (e) {
       // stringify fail hone par silently ignore karo
     }
-  }
+    }
 
   // chat-completions response structure se assistant ka text content nikalte hain
-  let text = null;
-  if (typeof data?.choices?.[0]?.message?.content === "string") {
-    text = data.choices[0].message.content.trim();
-  }
+    let text = null;
+    if (typeof data?.choices?.[0]?.message?.content === "string") {
+      text = data.choices[0].message.content.trim();
+    }
 
-  if (!text) {
+    if (!text) {
     console.warn("[roadmap] Hugging Face returned empty text content");
-  } else {
+    } else {
     console.debug(`[roadmap] Hugging Face text snippet: ${text.slice(0, 2000)}`);
-  }
+    }
 
-  return text || null;
+    return text || null;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error(`Hugging Face timed out after ${HF_TIMEOUT_MS}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // AI se roadmap generate karne ki koshish karta hai
@@ -272,6 +288,11 @@ async function callHuggingFace(prompt) {
 // Llama/Mistral ke liye yahi tarika kaam karta hai kyunki response_format support nahi hota
 async function tryAIGeneration({ companyName, role, weeks, hoursPerDay, weakTopics, strongTopics, companyTopics }) {
   if (!HF_API_TOKEN) return null;
+
+  const cacheKey = JSON.stringify({ companyName, role, weeks, hoursPerDay, weakTopics, strongTopics, companyTopics });
+  const cached = roadmapCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  roadmapCache.delete(cacheKey);
 
   // Prompt sirf weeklyPlan ke liye: checklist DEFAULT_TOPICS se automatically banti hai
   // Ye AI ka load kam karta hai aur consistent checklist ensure karta hai
@@ -354,11 +375,14 @@ async function tryAIGeneration({ companyName, role, weeks, hoursPerDay, weakTopi
     return null;
   }
 
-  return {
+  const result = {
     weeklyPlan: cleanedWeeklyPlan,
     checklist: cleanedChecklist,
     source: "huggingface",
   };
+
+  roadmapCache.set(cacheKey, { value: result, expiresAt: Date.now() + ROADMAP_CACHE_TTL_MS });
+  return result;
 }
 
 // Main controller: user ke input se roadmap generate karta hai
