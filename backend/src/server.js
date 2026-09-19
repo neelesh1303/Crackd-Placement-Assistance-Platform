@@ -10,7 +10,12 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   await connectDB();
-  await connectRedis();
+
+  try {
+    await connectRedis();
+  } catch (error) {
+    console.warn(`Redis unavailable; starting API without Redis: ${error.message}`);
+  }
 
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
