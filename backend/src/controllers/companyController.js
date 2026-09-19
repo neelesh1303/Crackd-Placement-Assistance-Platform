@@ -16,10 +16,14 @@ const { redisClient } = require("../config/redis");
 
 exports.getCompanies = async (req, res) => {
   try {
-    // Redis mein "companies" naam ki key check kar rahe hain.
-    // Agar data milta hai to Redis string return karega.
-    // Agar data nahi hai to null return hoga.
-    const cachedCompanies = await redisClient.get("companies");
+    let cachedCompanies = null;
+    if (redisClient.isReady) {
+      try {
+        cachedCompanies = await redisClient.get("companies");
+      } catch (redisError) {
+        console.warn(`Redis read skipped: ${redisError.message}`);
+      }
+    }
 
     // -------------------- CACHE HIT --------------------
     // Agar Redis mein companies mil gayi,
@@ -53,11 +57,13 @@ exports.getCompanies = async (req, res) => {
     // 600          → TTL (Time To Live) = 600 seconds = 10 minutes
     // JSON.stringify() → companies array ko string mein convert karta hai,
     //                    kyunki Redis value ko string ke form mein store karega.
-    await redisClient.setEx(
-      "companies",
-      600,
-      JSON.stringify(companies)
-    );
+    if (redisClient.isReady) {
+      try {
+        await redisClient.setEx("companies", 600, JSON.stringify(companies));
+      } catch (redisError) {
+        console.warn(`Redis write skipped: ${redisError.message}`);
+      }
+    }
 
     // MongoDB se mili companies frontend ko return kar rahe hain.
     return res.status(200).json({

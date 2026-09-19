@@ -229,7 +229,7 @@ async function callHuggingFace(prompt) {
         model: HF_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,   // low temperature se consistent JSON output milta hai
-        max_tokens: 1200,
+        max_tokens: 700,
         // FIX: response_format HATAYA — ye sirf OpenAI ke specific models support karte hain
         // Llama/Mistral pe ye parameter error ya empty response cause karta tha
         // JSON enforce karne ke liye ab prompt me hi instruction di gayi hai

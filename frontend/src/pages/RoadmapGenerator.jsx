@@ -142,7 +142,16 @@ function RoadmapGenerator() {
       const res = await api.post("/roadmap/generate", payload);
       setRoadmap(res.data.roadmap || null);
     } catch (err) {
-      setError(err.response?.data?.message || "Roadmap generation failed");
+      const message = err.response?.data?.message;
+      if (message) {
+        setError(message);
+      } else if (err.code === "ECONNABORTED") {
+        setError("Roadmap generation timed out. Please try again.");
+      } else if (!err.response) {
+        setError("Roadmap service is unreachable. Please check the backend deployment.");
+      } else {
+        setError("Roadmap generation failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
