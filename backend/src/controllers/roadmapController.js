@@ -6,7 +6,7 @@ const Company = require("../models/Company");
 // isliye default model Mistral rakha hai jo free tier me bhi kaam karta hai
 const HF_API_TOKEN = process.env.HF_API_TOKEN;
 const HF_MODEL = process.env.HF_MODEL || "mistralai/Mistral-7B-Instruct-v0.3";
-const HF_TIMEOUT_MS = Number(process.env.HF_TIMEOUT_MS) || 30000;
+const HF_TIMEOUT_MS = Number(process.env.HF_TIMEOUT_MS) || 60000;
 const ROADMAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const roadmapCache = new Map();
 
