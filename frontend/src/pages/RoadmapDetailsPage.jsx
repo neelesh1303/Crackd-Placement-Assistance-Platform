@@ -5,6 +5,7 @@ import ChecklistItem from "../components/ChecklistItem";
 import ReadinessBar from "../components/ReadinessBar";
 import StreakDisplay from "../components/StreakDisplay";
 import CompanyLabel from "../components/CompanyLabel";
+import PageShell from "../components/PageShell";
 
 const RoadmapDetailsPage = () => {
   const { companySlug } = useParams();
@@ -84,21 +85,21 @@ const RoadmapDetailsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <p className="text-gray-500 text-lg">Loading roadmap...</p>
-      </div>
+      <PageShell title="Roadmap details" subtitle="Loading your saved preparation plan." activeTab="progress">
+        <p className="roadmap-status">Loading roadmap...</p>
+      </PageShell>
     );
   }
 
   if (error === "no_tracker") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 max-w-md text-center">
+      <PageShell title="Roadmap details" subtitle="Save a roadmap to see your progress here." activeTab="progress">
+        <div className="roadmap-empty mx-auto max-w-md p-8 text-center">
           <p className="text-5xl mb-4">📋</p>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">
+          <h2 className="text-xl font-bold text-slate-100 mb-2">
             No Tracker Found 
           </h2>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-slate-300 text-sm mb-6">
             Generate a Roadmap and click on "Save to Tracker" to start tracking your progress
           </p>
           <button
@@ -108,23 +109,23 @@ const RoadmapDetailsPage = () => {
             Generate a Roadmap? →
           </button>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <p className="text-red-500 text-center">{error}</p>
-      </div>
+      <PageShell title="Roadmap details" subtitle="There was a problem loading this plan." activeTab="progress">
+        <p className="roadmap-status roadmap-status-error">{error}</p>
+      </PageShell>
     );
   }
 
   if (!tracker) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <p className="text-gray-500">Tracker data not found</p>
-      </div>
+      <PageShell title="Roadmap details" subtitle="No saved tracker data was found." activeTab="progress">
+        <p className="roadmap-status">Tracker data not found</p>
+      </PageShell>
     );
   }
 
@@ -139,24 +140,28 @@ const RoadmapDetailsPage = () => {
     : "General Preparation";
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto container-glass p-8">
-        
-        {/* Back Button */}
+    <PageShell
+      title={`${companyLabel} roadmap`}
+      subtitle="Review your weekly plan and keep your preparation moving."
+      activeTab="progress"
+      actions={
         <button
           onClick={() => navigate("/progress")}
-          className="mb-6 rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 transition"
+          className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
         >
-          ← Back to Progress
+          Back to Progress
         </button>
-
+      }
+    >
+      <div className="roadmap-details-content mx-auto max-w-4xl">
+        
         {/* Header */}
         <div className="mb-2">
           <CompanyLabel name={companyLabel} size="lg" />
         </div>
         {tracker?.target?.role && (
-          <p className="text-gray-600 mb-8">
-            Role: <span className="font-semibold">{tracker.target.role}</span>
+              <p className="text-slate-300 mb-8">
+            Role: <span className="font-semibold text-slate-100">{tracker.target.role}</span>
           </p>
         )}
 
@@ -169,18 +174,18 @@ const RoadmapDetailsPage = () => {
         {/* Weekly Plan Section */}
         {tracker.weeklyPlan?.length > 0 && (
           <div className="mt-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">📅 Weekly Plan</h2>
+            <h2 className="text-2xl font-bold text-slate-100 mb-4">📅 Weekly Plan</h2>
             <div className="space-y-4">
               {tracker.weeklyPlan.map((week, idx) => (
-                <div key={idx} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="font-bold text-lg text-gray-800">Week {week.week}</h3>
+                <div key={idx} className="roadmap-week p-5">
+                  <h3 className="font-bold text-lg text-slate-100">Week {week.week}</h3>
                   {week.focus?.length > 0 && (
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="text-sm text-slate-300 mt-2">
                       Focus: {week.focus.join(", ")}
                     </p>
                   )}
                   {week.tasks?.length > 0 && (
-                    <ul className="mt-3 list-disc list-inside text-sm text-gray-600 space-y-1">
+                    <ul className="mt-3 list-disc list-inside text-sm text-slate-300 space-y-1">
                       {week.tasks.map((task, i) => (
                         <li key={i}>{task}</li>
                       ))}
@@ -194,12 +199,12 @@ const RoadmapDetailsPage = () => {
 
         {/* Checklist Section */}
         <div className="mt-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+          <h2 className="text-2xl font-bold text-slate-100 mb-4">
             📝 Study Checklist
           </h2>
 
           {tracker.checklist?.length === 0 ? (
-            <p className="text-gray-500 text-sm">
+            <p className="text-slate-400 text-sm">
               Checklist empty hai — roadmap me topics add karo.
             </p>
           ) : (
@@ -227,19 +232,19 @@ const RoadmapDetailsPage = () => {
         <div className="mt-8 pb-8 flex gap-4">
           <button
             onClick={() => navigate("/progress")}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 transition"
+            className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-white/10 transition"
           >
             ← Back to Progress
           </button>
           <button
             onClick={() => navigate("/roadmap")}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800 transition"
+            className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 transition"
           >
             Update Roadmap
           </button>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 };
 
