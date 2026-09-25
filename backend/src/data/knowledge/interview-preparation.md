@@ -1,1 +1,0 @@
-A strong technical interview preparation routine combines topic revision, timed problem solving, and mistake review. Explain the brute force approach first, then improve it with the relevant data structure or algorithm. State time and space complexity. For behavioral questions, use a concise situation, task, action, and result structure.
