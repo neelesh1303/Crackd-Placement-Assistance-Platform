@@ -5,7 +5,7 @@ const Company = require("../models/Company");
 // Llama-3.1-8B-Instruct ke liye HuggingFace Pro access chahiye,
 // isliye default model Mistral rakha hai jo free tier me bhi kaam karta hai
 const HF_API_TOKEN = process.env.HF_API_TOKEN;
-const HF_MODEL = process.env.HF_MODEL || "mistralai/Mistral-7B-Instruct-v0.3";
+const HF_MODEL = process.env.HF_MODEL || "meta-llama/Llama-3.1-8B-Instruct";
 const HF_TIMEOUT_MS = Number(process.env.HF_TIMEOUT_MS) || 60000;
 const ROADMAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const roadmapCache = new Map();

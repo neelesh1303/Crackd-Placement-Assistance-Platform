@@ -1,9 +1,8 @@
 const dotenv = require("dotenv");
 dotenv.config(); // env file ko PEHLE load karo, fir app require karo
-const { connectRedis } = require("./config/redis");
-
 const connectDB = require("./config/db");
 const app = require("./app");
+const { connectRedis } = require("./config/redis");
 
 
 const PORT = process.env.PORT || 5000;

@@ -6,6 +6,7 @@ const problemRoutes = require("./routes/problemRoutes");
 
 const roadmapRoutes = require("./routes/roadmapRoutes");
 const trackerRoutes = require("./routes/trackerRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use("/api/roadmap", roadmapRoutes);
 app.use("/api/tracker", trackerRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/problems", problemRoutes);
+app.use("/api/chat", chatRoutes);
 
 // Import auth routes
 const authRoutes = require("./routes/authRoutes");

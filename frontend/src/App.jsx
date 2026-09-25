@@ -12,6 +12,7 @@ import RoadmapGenerator from "./pages/RoadmapGenerator";
 import ProgressDashboard from "./pages/ProgressDashboard";
 import RoadmapDetailsPage from "./pages/RoadmapDetailsPage";
 import Dashboard from "./pages/Dashboard";
+import Chat from "./pages/Chat";
 
 function App() {
   return (
@@ -62,6 +63,14 @@ element={
 </ProtectedRoute>
 }
 />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          }
+        />
         <Route
 path="/roadmap-details/:companySlug"
 element={

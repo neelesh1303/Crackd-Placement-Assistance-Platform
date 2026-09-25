@@ -5,6 +5,7 @@ const tabs = [
   { id: "companies", label: "Companies", to: "/companies" },
   { id: "roadmap", label: "Roadmap", to: "/roadmap" },
   { id: "progress", label: "Progress", to: "/progress" },
+  { id: "chat", label: "Assistant", to: "/chat" },
   { id: "experience", label: "Add Experience", to: "/add-experience" },
 ];
 
@@ -13,6 +14,7 @@ const getTabId = (pathname) => {
   if (pathname.startsWith("/roadmap-details")) return "roadmap";
   if (pathname.startsWith("/roadmap")) return "roadmap";
   if (pathname.startsWith("/progress")) return "progress";
+  if (pathname.startsWith("/chat")) return "chat";
   if (pathname.startsWith("/add-experience")) return "experience";
   return "dashboard";
 };
@@ -23,12 +25,16 @@ function PageShell({ title, subtitle, activeTab, actions, children }) {
   const currentTab = activeTab || getTabId(location.pathname);
 
   return (
-    <div className="workspace-shell min-h-screen text-slate-900">
+    <div className="workspace-shell min-h-screen text-slate-100">
       <div className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
-        <div className="workspace-panel rounded-[2rem] border p-8 shadow-[0_32px_90px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+        <div className="workspace-panel border p-6 shadow-[0_32px_90px_rgba(0,0,0,0.3)] backdrop-blur-xl sm:p-8">
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="workspace-kicker">Crackd prep workspace</p>
+              <div className="workspace-brand" aria-label="Crackd prep workspace">
+                <span className="workspace-brand-mark"><span>c</span>rackd<span className="workspace-brand-dot">.</span></span>
+                <span className="workspace-brand-divider" />
+                <span className="workspace-brand-label">prep workspace</span>
+              </div>
               <h1 className="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl">{title}</h1>
               {subtitle && <p className="mt-4 max-w-2xl text-slate-600">{subtitle}</p>}
             </div>
