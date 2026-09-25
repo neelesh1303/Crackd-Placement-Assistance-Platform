@@ -330,6 +330,124 @@
 	color: #172022 !important;
 }
 
+.workspace-shell {
+	position: relative;
+	isolation: isolate;
+	min-height: 100vh;
+	overflow: hidden;
+	background:
+		radial-gradient(circle at 12% 18%, rgba(36, 129, 255, 0.2), transparent 24rem),
+		radial-gradient(circle at 86% 8%, rgba(22, 199, 161, 0.16), transparent 22rem),
+		radial-gradient(circle at 72% 84%, rgba(240, 91, 133, 0.14), transparent 26rem),
+		linear-gradient(135deg, #1b252d 0%, #202c32 42%, #171c22 100%) !important;
+}
+
+.workspace-shell::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -2;
+	pointer-events: none;
+	opacity: 0.38;
+	background-image:
+		linear-gradient(rgba(140, 190, 220, 0.07) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(140, 190, 220, 0.07) 1px, transparent 1px),
+		linear-gradient(135deg, transparent 48%, rgba(22, 199, 161, 0.08) 49%, transparent 50%);
+	background-size: 42px 42px, 42px 42px, 180px 180px;
+	mask-image: linear-gradient(to bottom, black 0%, black 72%, transparent 100%);
+}
+
+.workspace-atmosphere {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	overflow: hidden;
+}
+
+.workspace-atmosphere::before,
+.workspace-atmosphere::after {
+	content: "";
+	position: absolute;
+	border: 1px solid rgba(22, 199, 161, 0.15);
+	border-radius: 50%;
+	transform: rotate(-18deg);
+}
+
+.workspace-atmosphere::before {
+	top: 8%;
+	right: -8rem;
+	width: 34rem;
+	height: 18rem;
+	box-shadow: 0 0 80px rgba(22, 199, 161, 0.08);
+}
+
+.workspace-atmosphere::after {
+	bottom: -12rem;
+	left: -9rem;
+	width: 32rem;
+	height: 24rem;
+	border-color: rgba(240, 91, 133, 0.14);
+}
+
+.signal-line {
+	position: absolute;
+	display: block;
+	height: 1px;
+	transform-origin: left center;
+	background: linear-gradient(90deg, transparent, rgba(22, 199, 161, 0.65), transparent);
+	box-shadow: 0 0 14px rgba(22, 199, 161, 0.35);
+}
+
+.signal-line-one {
+	top: 18rem;
+	right: -3rem;
+	width: 26rem;
+	transform: rotate(-28deg);
+}
+
+.signal-line-two {
+	bottom: 12rem;
+	left: -4rem;
+	width: 24rem;
+	transform: rotate(26deg);
+	background: linear-gradient(90deg, transparent, rgba(240, 91, 133, 0.6), transparent);
+	box-shadow: 0 0 14px rgba(240, 91, 133, 0.3);
+}
+
+.signal-node {
+	position: absolute;
+	display: block;
+	width: 0.55rem;
+	height: 0.55rem;
+	border: 2px solid #a6fff0;
+	border-radius: 50%;
+	background: #16c7a1;
+	box-shadow: 0 0 0 6px rgba(22, 199, 161, 0.1), 0 0 22px rgba(22, 199, 161, 0.7);
+}
+
+.signal-node-one { top: 17.7rem; right: 21rem; }
+.signal-node-two { bottom: 10.5rem; left: 19rem; background: #f05b85; border-color: #ffd2df; box-shadow: 0 0 0 6px rgba(240, 91, 133, 0.1), 0 0 22px rgba(240, 91, 133, 0.65); }
+
+.workspace-content {
+	position: relative;
+	z-index: 1;
+}
+
+.workspace-header {
+	min-height: 8rem;
+}
+
+.workspace-subtitle {
+	color: #b7c7c5;
+	font-size: 1rem;
+	line-height: 1.65;
+}
+
+.workspace-main {
+	position: relative;
+}
+
 .chat-composer {
 	border: 1px solid rgba(242, 240, 232, 0.14);
 	border-radius: 0.9rem;
