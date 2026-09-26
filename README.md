@@ -810,6 +810,14 @@ Possible platforms include:
 - Netlify
 - Render
 
+For a separately deployed frontend, configure `VITE_API_BASE_URL` with the public backend URL, for example:
+
+```env
+VITE_API_BASE_URL=https://your-backend.example.com
+```
+
+The frontend appends `/api` automatically. Do not add `/api` unless the value already includes that path.
+
 ### Backend
 
 Possible platforms include:
@@ -818,6 +826,8 @@ Possible platforms include:
 - Railway
 - AWS
 - Other Node.js-compatible hosting platforms
+
+Configure `MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, `GEMINI_MODEL`, and `GEMINI_EMBEDDING_MODEL` in the backend service environment. Use `gemini-2.5-flash` for `GEMINI_MODEL`.
 
 ### Database
 

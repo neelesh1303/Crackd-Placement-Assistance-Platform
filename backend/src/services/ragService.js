@@ -236,7 +236,11 @@ async function answerQuestion(question) {
   const databaseFacts = formatDatabaseContext(databaseContext);
 
   const data = await generateAnswer({
-    generationConfig: { temperature: 0.2, maxOutputTokens: 700 },
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: 2048,
+      thinkingConfig: { thinkingBudget: 0 },
+    },
     systemInstruction: {
       parts: [
         {

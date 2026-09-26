@@ -1,7 +1,10 @@
 import axios from "axios";
 
-const defaultApiBase = import.meta.env.VITE_API_BASE_URL
-  ? `${import.meta.env.VITE_API_BASE_URL}/api`
+const configuredApiBase = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "");
+const defaultApiBase = configuredApiBase
+  ? configuredApiBase.endsWith("/api")
+    ? configuredApiBase
+    : `${configuredApiBase}/api`
   : import.meta.env.MODE === "development"
   ? "http://localhost:5000/api"
   : "/api";
