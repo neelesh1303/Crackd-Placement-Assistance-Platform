@@ -3,29 +3,27 @@ const Problem = require("../models/Problem");
 const Experience = require("../models/Experience");
 require("../models/Company");
 
-const HF_API_TOKEN = process.env.HF_API_TOKEN;
-const HF_MODEL = process.env.HF_MODEL || "meta-llama/Llama-3.1-8B-Instruct";
-const HF_EMBEDDING_MODEL =
-  process.env.HF_EMBEDDING_MODEL || "sentence-transformers/all-MiniLM-L6-v2";
-const HF_TIMEOUT_MS = Number(process.env.HF_TIMEOUT_MS) || 60000;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const GEMINI_EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 60000;
 
-async function callHuggingFace(url, body) {
-  if (!HF_API_TOKEN) throw new Error("HF_API_TOKEN is missing");
+async function callGemini(path, body) {
+  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is missing");
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), HF_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${HF_API_TOKEN}`,
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/${path}?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      }
+    );
     const raw = await response.text();
     let data;
     try {
@@ -35,13 +33,12 @@ async function callHuggingFace(url, body) {
     }
 
     if (!response.ok) {
-      throw new Error(`Hugging Face error ${response.status}: ${raw.slice(0, 300)}`);
+      throw new Error(`Gemini error ${response.status}: ${raw.slice(0, 500)}`);
     }
-
     return data;
   } catch (error) {
     if (error.name === "AbortError") {
-      throw new Error(`Hugging Face timed out after ${HF_TIMEOUT_MS}ms`);
+      throw new Error(`Gemini timed out after ${GEMINI_TIMEOUT_MS}ms`);
     }
     throw error;
   } finally {
@@ -49,35 +46,51 @@ async function callHuggingFace(url, body) {
   }
 }
 
-async function scoreSimilarities(question, documents) {
-  const data = await callHuggingFace(
-    `https://router.huggingface.co/hf-inference/models/${encodeURIComponent(HF_EMBEDDING_MODEL)}`,
+async function createGeminiEmbedding(text, taskType) {
+  const data = await callGemini(
+    `models/${encodeURIComponent(GEMINI_EMBEDDING_MODEL)}:embedContent`,
     {
-    inputs: {
-      source_sentence: question,
-      sentences: documents,
-    },
-    options: { wait_for_model: true },
+      model: `models/${GEMINI_EMBEDDING_MODEL}`,
+      content: { parts: [{ text }] },
+      taskType,
+      outputDimensionality: 768,
     }
   );
-
-  if (!Array.isArray(data) || data.some((score) => typeof score !== "number")) {
-    throw new Error("Hugging Face returned invalid similarity scores");
+  const values = data?.embedding?.values;
+  if (!Array.isArray(values) || values.some((value) => typeof value !== "number")) {
+    throw new Error("Gemini returned an invalid embedding");
   }
-  return data;
+  return values;
+}
+
+function cosineSimilarity(first, second) {
+  if (!first?.length || first.length !== second?.length) return -1;
+
+  let dot = 0;
+  let firstMagnitude = 0;
+  let secondMagnitude = 0;
+  for (let index = 0; index < first.length; index += 1) {
+    dot += first[index] * second[index];
+    firstMagnitude += first[index] * first[index];
+    secondMagnitude += second[index] * second[index];
+  }
+
+  if (!firstMagnitude || !secondMagnitude) return -1;
+  return dot / (Math.sqrt(firstMagnitude) * Math.sqrt(secondMagnitude));
 }
 
 async function retrieveContext(question, limit = 4) {
-  const chunks = await KnowledgeChunk.find().select("title content source").lean();
-  if (!chunks.length) return [];
-
-  const scores = await scoreSimilarities(
-    question,
-    chunks.map((chunk) => chunk.content)
-  );
+  const questionEmbedding = await createGeminiEmbedding(question, "RETRIEVAL_QUERY");
+  const chunks = await KnowledgeChunk.find()
+    .select("title content source embedding")
+    .lean();
 
   return chunks
-    .map((chunk, index) => ({ ...chunk, score: scores[index] }))
+    .filter((chunk) => Array.isArray(chunk.embedding) && chunk.embedding.length > 0)
+    .map((chunk) => ({
+      ...chunk,
+      score: cosineSimilarity(questionEmbedding, chunk.embedding),
+    }))
     .sort((first, second) => second.score - first.score)
     .slice(0, limit);
 }
@@ -105,20 +118,15 @@ function findTopics(question) {
 function findRequestedYear(question) {
   const normalized = question.toLowerCase();
   const currentYear = new Date().getFullYear();
-  if (normalized.includes("this year") || normalized.includes("current year")) {
-    return currentYear;
-  }
+  if (normalized.includes("this year") || normalized.includes("current year")) return currentYear;
   if (normalized.includes("last year")) return currentYear - 1;
-
   const yearMatch = normalized.match(/\b(20\d{2})\b/);
   return yearMatch ? Number(yearMatch[1]) : null;
 }
 
 function topicMatches(value, topics) {
   const normalized = String(value || "").toLowerCase();
-  return topics.some((topic) =>
-    topic.aliases.some((alias) => normalized.includes(alias))
-  );
+  return topics.some((topic) => topic.aliases.some((alias) => normalized.includes(alias)));
 }
 
 async function retrieveDatabaseContext(question) {
@@ -127,23 +135,20 @@ async function retrieveDatabaseContext(question) {
   const problemFilter = {};
   if (year) problemFilter.year = year;
   if (topics.length) {
-    problemFilter.$or = [
-      ...topics.flatMap((topic) => [
-        ...topic.aliases.map((alias) => ({ topic: { $regex: alias, $options: "i" } })),
-        ...topic.aliases.map((alias) => ({ title: { $regex: alias, $options: "i" } })),
-      ]),
-    ];
+    problemFilter.$or = topics.flatMap((topic) => [
+      ...topic.aliases.map((alias) => ({ topic: { $regex: alias, $options: "i" } })),
+      ...topic.aliases.map((alias) => ({ title: { $regex: alias, $options: "i" } })),
+    ]);
   }
 
   const problems = await Problem.find(problemFilter)
     .populate("company", "name slug")
-    .select("title topic difficulty askedInRound company year role notes")
+    .select("title topic askedInRound company year role")
     .sort({ year: -1, createdAt: -1 })
     .limit(50)
     .lean();
 
-  const experienceFilter = year ? { year } : {};
-  const experiences = await Experience.find(experienceFilter)
+  const experiences = await Experience.find(year ? { year } : {})
     .populate("company", "name slug")
     .select("company role year rounds")
     .sort({ year: -1, createdAt: -1 })
@@ -165,7 +170,6 @@ async function retrieveDatabaseContext(question) {
 
   const records = [
     ...problems.map((problem) => ({
-      type: "problem",
       company: problem.company?.name || "Unknown company",
       year: problem.year,
       title: problem.title,
@@ -175,7 +179,6 @@ async function retrieveDatabaseContext(question) {
     })),
     ...matchingExperiences.flatMap((experience) =>
       (topics.length ? experience.matchingRounds : experience.rounds || []).map((round) => ({
-        type: "experience",
         company: experience.company?.name || "Unknown company",
         year: experience.year,
         title: (round.problemsAsked || []).join(", ") || "Interview round",
@@ -189,14 +192,12 @@ async function retrieveDatabaseContext(question) {
   return { topics, year, records: records.slice(0, 80) };
 }
 
-function formatDatabaseContext(databaseContext) {
-  const { topics, year, records } = databaseContext;
+function formatDatabaseContext({ topics, year, records }) {
   const topicLabel = topics.map((topic) => topic.name).join(", ");
   const scope = [topicLabel, year].filter(Boolean).join(" in ") || "the database";
   if (!records.length) {
     return `No matching database records were found for ${scope}. Do not invent companies or interview questions.`;
   }
-
   return [
     `Live MongoDB records matching ${scope}:`,
     ...records.map(
@@ -211,38 +212,45 @@ async function answerQuestion(question) {
     retrieveContext(question),
     retrieveDatabaseContext(question),
   ]);
-  const context = relevantChunks
-    .map((chunk, index) => `[Source ${index + 1}: ${chunk.source}]\n${chunk.content}`)
+  const studyContext = relevantChunks
+    .map((chunk, index) => `[Study source ${index + 1}: ${chunk.source}]\n${chunk.content}`)
     .join("\n\n");
   const databaseFacts = formatDatabaseContext(databaseContext);
 
-  const data = await callHuggingFace("https://router.huggingface.co/v1/chat/completions", {
-    model: HF_MODEL,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are Crackd's placement preparation assistant. Answer using the live MongoDB records first for company, year, topic, and interview-question questions. Use study notes only for explanations. Never invent a company, year, or question. If the database says no matching records were found, say so clearly.",
-      },
+  const data = await callGemini(`models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
+    generationConfig: { temperature: 0.2, maxOutputTokens: 700 },
+    systemInstruction: {
+      parts: [
+        {
+          text: "You are Crackd's placement preparation assistant. Use live MongoDB records for company, year, topic, and interview-question facts. Use embedded study notes for explanations. Never invent a company, year, or question. If matching database records do not exist, say that clearly.",
+        },
+      ],
+    },
+    contents: [
       {
         role: "user",
-        content: `Live database context:\n${databaseFacts}\n\nStudy-note context:\n${context || "No study notes were found."}\n\nQuestion:\n${question}`,
+        parts: [
+          {
+            text: `Live database context:\n${databaseFacts}\n\nEmbedded study-note context:\n${studyContext || "No embedded study notes were found."}\n\nQuestion:\n${question}`,
+          },
+        ],
       },
     ],
-    temperature: 0.2,
-    max_tokens: 500,
   });
 
-  const answer = data?.choices?.[0]?.message?.content?.trim();
-  if (!answer) throw new Error("Hugging Face returned an empty chat response");
+  const answer = data?.candidates?.[0]?.content?.parts
+    ?.map((part) => part.text || "")
+    .join("")
+    .trim();
+  if (!answer) throw new Error("Gemini returned an empty answer");
 
   return {
     answer,
     sources: [
       ...relevantChunks.map((chunk) => ({
-      title: chunk.title,
-      source: chunk.source,
-      score: Number(chunk.score.toFixed(3)),
+        title: chunk.title,
+        source: chunk.source,
+        score: Number(chunk.score.toFixed(3)),
       })),
       ...databaseContext.records.slice(0, 10).map((record) => ({
         title: `${record.company} - ${record.title}`,
@@ -253,4 +261,4 @@ async function answerQuestion(question) {
   };
 }
 
-module.exports = { answerQuestion };
+module.exports = { answerQuestion, createGeminiEmbedding };

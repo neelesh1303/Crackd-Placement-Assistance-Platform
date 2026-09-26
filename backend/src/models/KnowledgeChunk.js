@@ -5,7 +5,7 @@ const knowledgeChunkSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     content: { type: String, required: true, trim: true },
     source: { type: String, required: true, trim: true },
-    embedding: { type: [Number], default: [] },
+    embedding: { type: [Number], required: true },
   },
   { timestamps: true }
 );

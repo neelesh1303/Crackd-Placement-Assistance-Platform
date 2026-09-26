@@ -6,6 +6,7 @@ const { resolveAtlasUri } = require("../config/db");
 require("dotenv").config({ path: path.join(__dirname, "../../.env") });
 
 const KnowledgeChunk = require("../models/KnowledgeChunk");
+const { createGeminiEmbedding } = require("../services/ragService");
 
 function splitText(text, maxWords = 300) {
   const words = text.split(/\s+/).filter(Boolean);
@@ -26,7 +27,8 @@ async function run() {
   for (const file of files) {
     const text = fs.readFileSync(path.join(knowledgeDir, file), "utf8");
     for (const content of splitText(text)) {
-      await KnowledgeChunk.create({ title: file, content, source: file });
+      const embedding = await createGeminiEmbedding(content, "RETRIEVAL_DOCUMENT");
+      await KnowledgeChunk.create({ title: file, content, source: file, embedding });
       console.log(`[knowledge] Indexed ${file}`);
     }
   }
