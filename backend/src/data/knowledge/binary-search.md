@@ -1,1 +1,0 @@
-Binary search works on sorted data. Maintain low and high pointers and calculate a midpoint. Compare the target with the midpoint value and discard the half that cannot contain the target. Binary search runs in O(log n) time and uses O(1) extra space in an iterative implementation. Practice lower bound, upper bound, rotated arrays, and searching an answer space.

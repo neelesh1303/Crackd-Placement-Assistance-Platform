@@ -4,7 +4,7 @@ const Experience = require("../models/Experience");
 require("../models/Company");
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const GEMINI_EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 60000;
 
@@ -80,10 +80,13 @@ function cosineSimilarity(first, second) {
 }
 
 async function retrieveContext(question, limit = 4) {
-  const questionEmbedding = await createGeminiEmbedding(question, "RETRIEVAL_QUERY");
   const chunks = await KnowledgeChunk.find()
     .select("title content source embedding")
     .lean();
+
+  if (!chunks.length) return [];
+
+  const questionEmbedding = await createGeminiEmbedding(question, "RETRIEVAL_QUERY");
 
   return chunks
     .filter((chunk) => Array.isArray(chunk.embedding) && chunk.embedding.length > 0)
