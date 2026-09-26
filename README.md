@@ -670,7 +670,7 @@ HF_MODEL=meta-llama/Llama-3.1-8B-Instruct
 HF_TIMEOUT_MS=60000
 
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-3.8-flash
+GEMINI_MODEL=gemini-2.5-flash
 GEMINI_EMBEDDING_MODEL=gemini-embedding-001
 
 PORT=5000
@@ -743,16 +743,9 @@ npm run dev
 
 Vite will provide the local development URL in the terminal.
 
-### 7. Build the RAG knowledge base
+### 7. Optional knowledge ingestion
 
-After configuring `GEMINI_API_KEY` and MongoDB:
-
-```bash
-cd backend
-npm run ingest:knowledge
-```
-
-This step is required to populate `KnowledgeChunk` documents for semantic retrieval.
+The assistant uses MongoDB interview records directly. Knowledge-note ingestion is optional; if no files exist in `backend/src/data/knowledge`, the assistant skips semantic retrieval and continues with database records.
 
 ---
 

@@ -5,6 +5,7 @@ require("../models/Company");
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_FALLBACK_MODEL = "gemini-2.5-flash";
 const GEMINI_EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 60000;
 
@@ -195,6 +196,20 @@ async function retrieveDatabaseContext(question) {
   return { topics, year, records: records.slice(0, 80) };
 }
 
+async function generateAnswer(body) {
+  try {
+    return await callGemini(`models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, body);
+  } catch (error) {
+    if (GEMINI_MODEL === GEMINI_FALLBACK_MODEL || !error.message.includes("Gemini error 503")) {
+      throw error;
+    }
+    return callGemini(
+      `models/${encodeURIComponent(GEMINI_FALLBACK_MODEL)}:generateContent`,
+      body
+    );
+  }
+}
+
 function formatDatabaseContext({ topics, year, records }) {
   const topicLabel = topics.map((topic) => topic.name).join(", ");
   const scope = [topicLabel, year].filter(Boolean).join(" in ") || "the database";
@@ -220,7 +235,7 @@ async function answerQuestion(question) {
     .join("\n\n");
   const databaseFacts = formatDatabaseContext(databaseContext);
 
-  const data = await callGemini(`models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
+  const data = await generateAnswer({
     generationConfig: { temperature: 0.2, maxOutputTokens: 700 },
     systemInstruction: {
       parts: [
