@@ -1,6 +1,6 @@
 const KnowledgeChunk = require("../models/KnowledgeChunk");
 const Experience = require("../models/Experience");
-require("../models/Company");
+const Company = require("../models/Company");
 
 function getGeminiApiKey() {
   return (process.env.GEMINI_API_KEY || "").trim();
@@ -176,17 +176,31 @@ function formatExperienceToText(exp) {
 }
 
 async function syncAllExperiences() {
-  const experiences = await Experience.find().populate("company", "name slug").lean();
-  if (!experiences.length) return;
+  try {
+    const experiences = await Experience.find().populate("company", "name slug").lean();
+    if (!experiences.length) return;
 
-  await KnowledgeChunk.deleteMany({});
-  for (const exp of experiences) {
-    const companyName = exp.company?.name || "Company";
-    const text = formatExperienceToText(exp);
-    const title = `${companyName} - ${exp.role} (${exp.year || "Interview"})`;
-    const source = `${companyName} Interview Experience`;
-    const embedding = await createGeminiEmbedding(text, "RETRIEVAL_DOCUMENT");
-    await KnowledgeChunk.create({ title, content: text, source, embedding });
+    for (const exp of experiences) {
+      const companyName = exp.company?.name || "Company";
+      const text = formatExperienceToText(exp);
+      const title = `${companyName} - ${exp.role} (${exp.year || "Interview"})`;
+      const source = `${companyName} Interview Experience`;
+
+      let embedding = [];
+      try {
+        embedding = await createGeminiEmbedding(text, "RETRIEVAL_DOCUMENT");
+      } catch (embErr) {
+        console.warn(`[ragService] Could not generate embedding during sync for ${companyName}: ${embErr.message}`);
+      }
+
+      await KnowledgeChunk.findOneAndUpdate(
+        { source },
+        { title, content: text, source, ...(embedding.length ? { embedding } : {}) },
+        { upsert: true, new: true }
+      );
+    }
+  } catch (err) {
+    console.warn(`[ragService] syncAllExperiences error: ${err.message}`);
   }
 }
 
@@ -199,11 +213,17 @@ async function indexSingleExperience(exp) {
     const text = formatExperienceToText(populated);
     const title = `${companyName} - ${populated.role} (${populated.year || "Interview"})`;
     const source = `${companyName} Interview Experience`;
-    const embedding = await createGeminiEmbedding(text, "RETRIEVAL_DOCUMENT");
+
+    let embedding = [];
+    try {
+      embedding = await createGeminiEmbedding(text, "RETRIEVAL_DOCUMENT");
+    } catch (embErr) {
+      console.warn(`[ragService] Could not generate embedding for new experience: ${embErr.message}`);
+    }
 
     await KnowledgeChunk.findOneAndUpdate(
       { source },
-      { title, content: text, source, embedding },
+      { title, content: text, source, ...(embedding.length ? { embedding } : {}) },
       { upsert: true, new: true }
     );
   } catch (error) {
@@ -227,7 +247,42 @@ function cosineSimilarity(first, second) {
   return dot / (Math.sqrt(firstMagnitude) * Math.sqrt(secondMagnitude));
 }
 
-async function retrieveContext(question, limit = 4, minSimilarity = 0.58) {
+// Keyword & company name match fallback (Hybrid RAG)
+async function findKeywordMatches(question) {
+  try {
+    const normalized = question.toLowerCase();
+    const companies = await Company.find().select("name slug").lean();
+
+    const matchedCompanies = companies.filter((c) => {
+      const name = (c.name || "").toLowerCase();
+      const slug = (c.slug || "").toLowerCase();
+      return (name && normalized.includes(name)) || (slug && normalized.includes(slug));
+    });
+
+    if (!matchedCompanies.length) return [];
+
+    const matchedCompanyIds = matchedCompanies.map((c) => c._id);
+    const experiences = await Experience.find({ company: { $in: matchedCompanyIds } })
+      .populate("company", "name slug")
+      .lean();
+
+    return experiences.map((exp) => {
+      const companyName = exp.company?.name || "Company";
+      const text = formatExperienceToText(exp);
+      return {
+        title: `${companyName} - ${exp.role} (${exp.year || "Interview"})`,
+        content: text,
+        source: `${companyName} Interview Experience`,
+        score: 0.95,
+      };
+    });
+  } catch (err) {
+    console.warn(`[ragService] Keyword match fallback failed: ${err.message}`);
+    return [];
+  }
+}
+
+async function retrieveContext(question, limit = 4, minSimilarity = 0.52) {
   try {
     let chunks = await KnowledgeChunk.find().select("title content source embedding").lean();
 
@@ -236,30 +291,46 @@ async function retrieveContext(question, limit = 4, minSimilarity = 0.58) {
       chunks = await KnowledgeChunk.find().select("title content source embedding").lean();
     }
 
-    if (!chunks || !chunks.length) return [];
+    let semanticResults = [];
 
-    const validChunks = chunks.filter((chunk) => Array.isArray(chunk.embedding) && chunk.embedding.length > 0);
-    if (!validChunks.length) return [];
+    try {
+      const validChunks = (chunks || []).filter((chunk) => Array.isArray(chunk.embedding) && chunk.embedding.length > 0);
+      if (validChunks.length) {
+        const questionEmbedding = await createGeminiEmbedding(question, "RETRIEVAL_QUERY");
 
-    const questionEmbedding = await createGeminiEmbedding(question, "RETRIEVAL_QUERY");
+        const scoredChunks = validChunks
+          .map((chunk) => ({
+            ...chunk,
+            score: cosineSimilarity(questionEmbedding, chunk.embedding),
+          }))
+          .filter((chunk) => chunk.score >= minSimilarity)
+          .sort((first, second) => second.score - first.score);
 
-    const scoredChunks = validChunks
-      .map((chunk) => ({
-        ...chunk,
-        score: cosineSimilarity(questionEmbedding, chunk.embedding),
-      }))
-      .filter((chunk) => chunk.score >= minSimilarity)
-      .sort((first, second) => second.score - first.score);
+        if (scoredChunks.length > 0) {
+          const topScore = scoredChunks[0].score;
+          semanticResults = scoredChunks
+            .filter((chunk) => chunk.score >= Math.max(minSimilarity, topScore - 0.12))
+            .slice(0, limit);
+        }
+      }
+    } catch (semanticError) {
+      console.warn(`[ragService] Semantic embedding search failed or bypassed: ${semanticError.message}`);
+    }
 
-    if (!scoredChunks.length) return [];
+    // If semantic retrieval returned high-confidence matches, return them
+    if (semanticResults.length > 0) {
+      return semanticResults;
+    }
 
-    const topScore = scoredChunks[0].score;
-    // Keep chunks that are strongly relevant to the top score
-    return scoredChunks
-      .filter((chunk) => chunk.score >= Math.max(minSimilarity, topScore - 0.06))
-      .slice(0, limit);
+    // Fallback: Check if query explicitly targets recorded companies in DB
+    const keywordResults = await findKeywordMatches(question);
+    if (keywordResults.length > 0) {
+      return keywordResults.slice(0, limit);
+    }
+
+    return [];
   } catch (error) {
-    console.warn(`[ragService] Semantic context retrieval bypassed: ${error.message}`);
+    console.warn(`[ragService] Context retrieval failed: ${error.message}`);
     return [];
   }
 }

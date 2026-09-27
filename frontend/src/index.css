@@ -586,10 +586,7 @@
 .workspace-shell {
 	position: relative;
 	isolation: isolate;
-	background:
-		radial-gradient(circle at 88% 4%, rgba(22, 199, 161, 0.1), transparent 26rem),
-		radial-gradient(circle at 5% 80%, rgba(240, 91, 133, 0.08), transparent 24rem),
-		linear-gradient(145deg, #2b3335 0%, #202628 55%, #1b2022 100%);
+	background: transparent;
 }
 
 .workspace-shell::before,
@@ -1039,27 +1036,24 @@
 	}
 
 	.workspace-shell,
-	.auth-page {
-		background:
-			radial-gradient(circle at 88% 4%, rgba(22, 199, 161, 0.1), transparent 26rem),
-			radial-gradient(circle at 5% 80%, rgba(240, 91, 133, 0.08), transparent 24rem),
-			linear-gradient(145deg, #2b3335 0%, #202628 55%, #1b2022 100%);
+	.auth-page,
+	.home-page {
+		background: transparent !important;
 	}
 
 	.workspace-shell::before,
-	.auth-page::before {
-		opacity: 0.2;
-		background-image:
-			linear-gradient(rgba(242, 240, 232, 0.05) 1px, transparent 1px),
-			linear-gradient(90deg, rgba(242, 240, 232, 0.05) 1px, transparent 1px);
-		background-size: 32px 32px;
+	.auth-page::before,
+	.home-noise {
+		display: none !important;
 	}
 
 	.workspace-panel {
 		border-color: rgba(242, 240, 232, 0.14) !important;
 		border-radius: 1rem !important;
-		background: rgba(38, 46, 48, 0.82) !important;
-		box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28) !important;
+		background: rgba(38, 46, 48, 0.85) !important;
+		box-shadow: 0 30px 80px rgba(0, 0, 0, 0.38) !important;
+		backdrop-filter: blur(14px) !important;
+		-webkit-backdrop-filter: blur(14px) !important;
 	}
 	.workspace-kicker { color: var(--accent) !important; }
 	.brand-mark-small { color: var(--accent-2); font-family: "Space Grotesk", sans-serif; font-size: 1.15rem; letter-spacing: -0.12em; }
@@ -1127,13 +1121,8 @@
 	.auth-page button[type="submit"]:hover { background: #37e0bd !important; }
 
 	.home-page {
-		background:
-			radial-gradient(circle at 78% 16%, rgba(22, 199, 161, 0.13), transparent 24rem),
-			radial-gradient(circle at 10% 78%, rgba(240, 91, 133, 0.1), transparent 22rem),
-			linear-gradient(145deg, #2b3335 0%, #202628 55%, #1b2022 100%);
 		color: var(--text) !important;
 	}
-	.home-noise { opacity: 0.2; background-image: linear-gradient(rgba(242, 240, 232, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(242, 240, 232, 0.05) 1px, transparent 1px); }
 	.brand-mark { color: var(--text); }
 	.brand-mark > span:first-child, .home-hero-copy h1 em, .eyebrow, .home-text-link span { color: var(--accent) !important; }
 	.brand-mark > span:first-child { color: #38a8ff !important; }
@@ -1235,5 +1224,35 @@
 .workspace-shell button.bg-blue-600,
 .workspace-shell button.bg-blue-700 {
 	color: #172022 !important;
+}
+
+/* Ambient Background Code Stream Animations */
+@keyframes codeScrollUp {
+	0% {
+		transform: translateY(0);
+	}
+	100% {
+		transform: translateY(-50%);
+	}
+}
+
+.animate-code-scroll-up-fast {
+	animation: codeScrollUp 35s linear infinite;
+	will-change: transform;
+}
+
+.animate-code-scroll-up-medium {
+	animation: codeScrollUp 50s linear infinite;
+	will-change: transform;
+}
+
+.animate-code-scroll-up-slow {
+	animation: codeScrollUp 68s linear infinite;
+	will-change: transform;
+}
+
+.mask-fade-gradient {
+	mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, transparent 100%);
+	-webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, transparent 100%);
 }
 
