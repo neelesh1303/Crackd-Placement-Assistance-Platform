@@ -19,9 +19,19 @@ function splitText(text, maxWords = 300) {
 
 async function run() {
   const knowledgeDir = path.join(__dirname, "../data/knowledge");
-  const files = fs.readdirSync(knowledgeDir).filter((file) => /\.(md|txt)$/i.test(file));
+  if (!fs.existsSync(knowledgeDir)) {
+    console.log("[knowledge] No knowledge directory found; skipping.");
+    return;
+  }
 
-  await mongoose.connect(await resolveAtlasUri(process.env.MONGO_URI));
+  const files = fs.readdirSync(knowledgeDir).filter((file) => /\.(md|txt)$/i.test(file));
+  if (!files.length) {
+    console.log("[knowledge] No knowledge files found in directory.");
+    return;
+  }
+
+  const uri = await resolveAtlasUri(process.env.MONGO_URI);
+  await mongoose.connect(uri);
   await KnowledgeChunk.deleteMany({});
 
   for (const file of files) {
@@ -34,6 +44,7 @@ async function run() {
   }
 
   await mongoose.disconnect();
+  console.log("[knowledge] Ingestion completed successfully");
 }
 
 run().catch((error) => {
