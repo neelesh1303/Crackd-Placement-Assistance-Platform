@@ -1,6 +1,7 @@
 const Experience = require("../models/Experience");
 const Company = require("../models/Company");
 const User = require("../models/User");
+const { indexSingleExperience } = require("../services/ragService");
 
 const normalizeSlug = (value) =>
   String(value || "")
@@ -105,7 +106,11 @@ exports.createExperience = async (req, res) => {
     };
 
     const experience = await Experience.create(payload);
-    await experience.populate("company", "slug");
+    await experience.populate("company", "slug name");
+
+    indexSingleExperience(experience).catch((err) =>
+      console.warn("[experienceController] Background indexing failed:", err.message)
+    );
 
     res.status(201).json({
       success: true,

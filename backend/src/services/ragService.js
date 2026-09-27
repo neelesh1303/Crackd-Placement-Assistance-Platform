@@ -1,5 +1,4 @@
 const KnowledgeChunk = require("../models/KnowledgeChunk");
-const Problem = require("../models/Problem");
 const Experience = require("../models/Experience");
 require("../models/Company");
 
@@ -8,7 +7,7 @@ function getGeminiApiKey() {
 }
 
 function getGeminiModel() {
-  return (process.env.GEMINI_MODEL || "gemini-2.5-flash").trim();
+  return (process.env.GEMINI_MODEL || "gemini-3.5-flash").trim();
 }
 
 function getGeminiEmbeddingModel() {
@@ -138,6 +137,80 @@ async function createGeminiEmbedding(text, taskType) {
   throw lastError || new Error("Failed to generate embedding with available models");
 }
 
+function formatExperienceToText(exp) {
+  const companyName = exp.company?.name || exp.company || "Company";
+  const role = exp.role || "Software Engineer";
+  const year = exp.year || exp.visitYear || "Recent";
+  const ctc = exp.ctc ? `CTC: ${exp.ctc} LPA` : "";
+  const cutoff = exp.cgpaCutoff ? `CGPA Cutoff: ${exp.cgpaCutoff}` : "";
+
+  const roundsText = (exp.rounds || [])
+    .map((round) => {
+      const parts = [
+        `Round ${round.roundNo} (${round.type}):`,
+        round.description ? `Description: ${round.description}` : "",
+        round.problemsAsked?.length ? `Problems/Questions Asked: ${round.problemsAsked.join(", ")}` : "",
+        round.topics?.length ? `Topics Covered: ${round.topics.join(", ")}` : "",
+        round.duration ? `Duration: ${round.duration}` : "",
+      ].filter(Boolean);
+      return parts.join("\n");
+    })
+    .join("\n\n");
+
+  const tips = exp.tips ? `Preparation Tips: ${exp.tips}` : "";
+  const resources = exp.resources?.length ? `Resources Used: ${exp.resources.join(", ")}` : "";
+
+  return [
+    `Company: ${companyName}`,
+    `Role: ${role}`,
+    `Year: ${year}`,
+    ctc,
+    cutoff,
+    "Interview Rounds & Questions:",
+    roundsText,
+    tips,
+    resources,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function syncAllExperiences() {
+  const experiences = await Experience.find().populate("company", "name slug").lean();
+  if (!experiences.length) return;
+
+  await KnowledgeChunk.deleteMany({});
+  for (const exp of experiences) {
+    const companyName = exp.company?.name || "Company";
+    const text = formatExperienceToText(exp);
+    const title = `${companyName} - ${exp.role} (${exp.year || "Interview"})`;
+    const source = `${companyName} Interview Experience`;
+    const embedding = await createGeminiEmbedding(text, "RETRIEVAL_DOCUMENT");
+    await KnowledgeChunk.create({ title, content: text, source, embedding });
+  }
+}
+
+async function indexSingleExperience(exp) {
+  try {
+    const populated = exp.company?.name ? exp : await Experience.findById(exp._id).populate("company", "name slug").lean();
+    if (!populated) return;
+
+    const companyName = populated.company?.name || "Company";
+    const text = formatExperienceToText(populated);
+    const title = `${companyName} - ${populated.role} (${populated.year || "Interview"})`;
+    const source = `${companyName} Interview Experience`;
+    const embedding = await createGeminiEmbedding(text, "RETRIEVAL_DOCUMENT");
+
+    await KnowledgeChunk.findOneAndUpdate(
+      { source },
+      { title, content: text, source, embedding },
+      { upsert: true, new: true }
+    );
+  } catch (error) {
+    console.warn(`[ragService] Failed to index single experience: ${error.message}`);
+  }
+}
+
 function cosineSimilarity(first, second) {
   if (!first?.length || !second?.length || first.length !== second.length) return -1;
 
@@ -154,11 +227,14 @@ function cosineSimilarity(first, second) {
   return dot / (Math.sqrt(firstMagnitude) * Math.sqrt(secondMagnitude));
 }
 
-async function retrieveContext(question, limit = 4) {
+async function retrieveContext(question, limit = 4, minSimilarity = 0.58) {
   try {
-    const chunks = await KnowledgeChunk.find()
-      .select("title content source embedding")
-      .lean();
+    let chunks = await KnowledgeChunk.find().select("title content source embedding").lean();
+
+    if (!chunks || !chunks.length) {
+      await syncAllExperiences();
+      chunks = await KnowledgeChunk.find().select("title content source embedding").lean();
+    }
 
     if (!chunks || !chunks.length) return [];
 
@@ -167,119 +243,24 @@ async function retrieveContext(question, limit = 4) {
 
     const questionEmbedding = await createGeminiEmbedding(question, "RETRIEVAL_QUERY");
 
-    return validChunks
+    const scoredChunks = validChunks
       .map((chunk) => ({
         ...chunk,
         score: cosineSimilarity(questionEmbedding, chunk.embedding),
       }))
-      .filter((chunk) => chunk.score > -1)
-      .sort((first, second) => second.score - first.score)
+      .filter((chunk) => chunk.score >= minSimilarity)
+      .sort((first, second) => second.score - first.score);
+
+    if (!scoredChunks.length) return [];
+
+    const topScore = scoredChunks[0].score;
+    // Keep chunks that are strongly relevant to the top score
+    return scoredChunks
+      .filter((chunk) => chunk.score >= Math.max(minSimilarity, topScore - 0.06))
       .slice(0, limit);
   } catch (error) {
     console.warn(`[ragService] Semantic context retrieval bypassed: ${error.message}`);
     return [];
-  }
-}
-
-const topicAliases = [
-  { name: "Binary Search", aliases: ["binary search", "binary-search", "bs"] },
-  { name: "Greedy", aliases: ["greedy", "greedy algorithm", "greedy algorithms"] },
-  { name: "Dynamic Programming", aliases: ["dynamic programming", "dp"] },
-  { name: "Sliding Window", aliases: ["sliding window"] },
-  { name: "Two Pointers", aliases: ["two pointers", "2 pointers"] },
-  { name: "Linked List", aliases: ["linked list", "linkedlist"] },
-  { name: "Arrays", aliases: ["array", "arrays"] },
-  { name: "Strings", aliases: ["string", "strings"] },
-  { name: "Trees", aliases: ["tree", "trees"] },
-  { name: "Graphs", aliases: ["graph", "graphs"] },
-];
-
-function findTopics(question) {
-  const normalized = question.toLowerCase();
-  return topicAliases.filter((topic) =>
-    topic.aliases.some((alias) => normalized.includes(alias))
-  );
-}
-
-function findRequestedYear(question) {
-  const normalized = question.toLowerCase();
-  const currentYear = new Date().getFullYear();
-  if (normalized.includes("this year") || normalized.includes("current year")) return currentYear;
-  if (normalized.includes("last year")) return currentYear - 1;
-  const yearMatch = normalized.match(/\b(20\d{2})\b/);
-  return yearMatch ? Number(yearMatch[1]) : null;
-}
-
-function topicMatches(value, topics) {
-  const normalized = String(value || "").toLowerCase();
-  return topics.some((topic) => topic.aliases.some((alias) => normalized.includes(alias)));
-}
-
-async function retrieveDatabaseContext(question) {
-  try {
-    const topics = findTopics(question);
-    const year = findRequestedYear(question);
-    const problemFilter = {};
-    if (year) problemFilter.year = year;
-    if (topics.length) {
-      problemFilter.$or = topics.flatMap((topic) => [
-        ...topic.aliases.map((alias) => ({ topic: { $regex: alias, $options: "i" } })),
-        ...topic.aliases.map((alias) => ({ title: { $regex: alias, $options: "i" } })),
-      ]);
-    }
-
-    const problems = await Problem.find(problemFilter)
-      .populate("company", "name slug")
-      .select("title topic askedInRound company year role")
-      .sort({ year: -1, createdAt: -1 })
-      .limit(50)
-      .lean();
-
-    const experiences = await Experience.find(year ? { year } : {})
-      .populate("company", "name slug")
-      .select("company role year rounds")
-      .sort({ year: -1, createdAt: -1 })
-      .limit(100)
-      .lean();
-
-    const matchingExperiences = topics.length
-      ? experiences
-          .map((experience) => ({
-            ...experience,
-            matchingRounds: (experience.rounds || []).filter((round) =>
-              [...(round.topics || []), ...(round.problemsAsked || [])].some((value) =>
-                topicMatches(value, topics)
-              )
-            ),
-          }))
-          .filter((experience) => experience.matchingRounds.length > 0)
-      : experiences;
-
-    const records = [
-      ...problems.map((problem) => ({
-        company: problem.company?.name || "Unknown company",
-        year: problem.year,
-        title: problem.title,
-        topic: problem.topic,
-        round: problem.askedInRound,
-        role: problem.role,
-      })),
-      ...matchingExperiences.flatMap((experience) =>
-        (topics.length ? experience.matchingRounds : experience.rounds || []).map((round) => ({
-          company: experience.company?.name || "Unknown company",
-          year: experience.year,
-          title: (round.problemsAsked || []).join(", ") || "Interview round",
-          topic: (round.topics || []).join(", "),
-          round: round.type,
-          role: experience.role,
-        }))
-      ),
-    ];
-
-    return { topics, year, records: records.slice(0, 80) };
-  } catch (error) {
-    console.warn(`[ragService] Database context retrieval bypassed: ${error.message}`);
-    return { topics: [], year: null, records: [] };
   }
 }
 
@@ -288,9 +269,11 @@ async function generateAnswer(body) {
   const candidateModels = [
     ...new Set([
       configured,
-      "gemini-2.5-flash",
       "gemini-3.5-flash",
       "gemini-flash-latest",
+      "gemini-2.5-flash-lite",
+      "gemini-3.7-flash",
+      "gemini-2.5-flash",
     ].filter(Boolean)),
   ];
 
@@ -344,92 +327,72 @@ function extractAnswerText(data) {
     .trim();
 }
 
-function formatDatabaseContext({ topics, year, records }) {
-  const topicLabel = topics.map((topic) => topic.name).join(", ");
-  const scope = [topicLabel, year].filter(Boolean).join(" in ") || "the database";
-  if (!records.length) {
-    return `No matching database records were found for ${scope}. Do not invent companies or interview questions.`;
-  }
-  return [
-    `Live MongoDB records matching ${scope}:`,
-    ...records.map(
-      (record) =>
-        `- Company: ${record.company}; Year: ${record.year || "unspecified"}; Topic: ${record.topic || "unspecified"}; Question: ${record.title}; Round: ${record.round || "unspecified"}; Role: ${record.role || "unspecified"}`
-    ),
-  ].join("\n");
-}
-
 async function answerQuestion(question) {
-  const [relevantChunks, databaseContext] = await Promise.all([
-    retrieveContext(question),
-    retrieveDatabaseContext(question),
-  ]);
-  const studyContext = relevantChunks
-    .map((chunk, index) => `[Study source ${index + 1}: ${chunk.source}]\n${chunk.content}`)
-    .join("\n\n");
-  const databaseFacts = formatDatabaseContext(databaseContext);
+  const relevantChunks = await retrieveContext(question);
 
-  let answer = "";
-  try {
-    const data = await generateAnswer({
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 2048,
-        thinkingConfig: { thinkingBudget: 0 },
-      },
-      systemInstruction: {
+  if (!relevantChunks || relevantChunks.length === 0) {
+    return {
+      answer: "I don't have data related to this in my interview knowledge base.",
+      sources: [],
+    };
+  }
+
+  const contextText = relevantChunks
+    .map((chunk, index) => `[Source ${index + 1}: ${chunk.source}]\n${chunk.content}`)
+    .join("\n\n");
+
+  const data = await generateAnswer({
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 1024,
+    },
+    systemInstruction: {
+      parts: [
+        {
+          text: `You are Crackd's placement preparation assistant. Answer the user question using ONLY the provided interview context.
+
+Strict Rules:
+1. If the provided context contains the relevant interview information (e.g. what a company asked, rounds, topics, problems, tips), provide a clear, structured, and helpful answer grounded strictly in the context.
+2. If the user asks about something that is NOT found in the provided context (e.g., general CS theory like "what is computer networks", unrelated subjects, or companies not in context), you MUST respond with: "I don't have data related to this in my interview knowledge base."
+3. Do not invent or hallucinate facts outside the provided context.`,
+        },
+      ],
+    },
+    contents: [
+      {
+        role: "user",
         parts: [
           {
-            text: "You are Crackd's placement preparation assistant. Use live MongoDB records for company, year, topic, and interview-question facts. Use embedded study notes for explanations. Never invent a company, year, or question. If matching database records do not exist, say that clearly.",
+            text: `Retrieved Context:\n${contextText}\n\nUser Question:\n${question}`,
           },
         ],
       },
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `Live database context:\n${databaseFacts}\n\nEmbedded study-note context:\n${studyContext || "No embedded study notes were found."}\n\nQuestion:\n${question}`,
-            },
-          ],
-        },
-      ],
-    });
+    ],
+  });
 
-    answer = extractAnswerText(data);
-  } catch (genError) {
-    console.warn("[ragService] LLM generation failed after all fallback attempts:", genError.message);
-
-    if (databaseContext.records && databaseContext.records.length > 0) {
-      const topRecords = databaseContext.records.slice(0, 8);
-      const summaryList = topRecords
-        .map((r) => `• **${r.company}** (${r.year || "Year N/A"}): ${r.title} [Round: ${r.round || "N/A"}, Topic: ${r.topic || "N/A"}]`)
-        .join("\n");
-      answer = `Here are the matching interview records found in the database for your query:\n\n${summaryList}\n\n*(Note: AI summary service is currently experiencing high demand; displaying direct database records).*`;
-    } else {
-      throw genError;
-    }
-  }
-
+  const answer = extractAnswerText(data);
   if (!answer) {
     throw new Error("Gemini returned an empty answer");
   }
 
+  const isRefusal = /i don't have data related to this/i.test(answer) || /i do not have data related to this/i.test(answer);
+
   return {
     answer,
-    sources: [
-      ...relevantChunks.map((chunk) => ({
-        title: chunk.title,
-        source: chunk.source,
-        score: typeof chunk.score === "number" ? Number(chunk.score.toFixed(3)) : null,
-      })),
-      ...databaseContext.records.slice(0, 10).map((record) => ({
-        title: `${record.company} - ${record.title}`,
-        source: "MongoDB interview data",
-        score: null,
-      })),
-    ],
+    sources: isRefusal
+      ? []
+      : relevantChunks.map((chunk) => ({
+          title: chunk.title,
+          source: chunk.source,
+          score: typeof chunk.score === "number" ? Number(chunk.score.toFixed(3)) : null,
+        })),
   };
 }
 
-module.exports = { answerQuestion, createGeminiEmbedding };
+module.exports = {
+  answerQuestion,
+  createGeminiEmbedding,
+  formatExperienceToText,
+  syncAllExperiences,
+  indexSingleExperience,
+};

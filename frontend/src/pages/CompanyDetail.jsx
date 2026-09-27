@@ -223,101 +223,148 @@ function CompanyDetail() {
           )}
 
           {/* Experience cards */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             {experiences.map((exp) => (
-              <div
-                key={exp._id}
-                className="rounded-xl border border-white/10 bg-slate-900/80 p-5 shadow-sm"
-              >
+              <div key={exp._id} className="exp-card">
+                {/* Experience header badges */}
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-300">
+                      <span>💼</span> {exp.role || "Role Unspecified"}
+                    </span>
 
-                {/* Experience metadata */}
-                <div className="mb-4 flex flex-wrap items-center gap-3">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300">
+                      <span>📅</span> Year: {exp.year || exp.visitYear || "N/A"}
+                    </span>
 
-                  <span className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-200">
-                    Role: {exp.role || "N/A"}
-                  </span>
+                    {exp.ctc && (
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300">
+                        <span>💰</span> {exp.ctc} LPA
+                      </span>
+                    )}
 
-                  <span className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-200">
-                    Year: {exp.year || "N/A"}
-                  </span>
+                    {exp.cgpaCutoff && (
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-300">
+                        <span>🎯</span> CGPA {exp.cgpaCutoff}+
+                      </span>
+                    )}
+                  </div>
 
-                  <span className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-200">
-                    Offer: {exp.gotOffer ? "Yes" : "No"}
-                  </span>
-
+                  <div>
+                    {exp.gotOffer ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-1 text-xs font-bold text-emerald-300">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        Offer Accepted 🎉
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-600 bg-slate-800/80 px-3 py-1 text-xs font-medium text-slate-300">
+                        Interview Candidate
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Tips */}
-                {exp.tips ? (
-                  <p className="mb-4 text-sm text-slate-300">
-                    <span className="font-semibold text-white">
-                      Tips:
-                    </span>{" "}
-                    {exp.tips}
-                  </p>
-                ) : null}
-
                 {/* Rounds */}
-                {Array.isArray(exp.rounds) &&
-                exp.rounds.length > 0 ? (
-                  <div>
-
-                    <h3 className="mb-3 text-sm font-semibold text-white">
-                      Rounds
+                {Array.isArray(exp.rounds) && exp.rounds.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="mb-3.5 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-teal-400">
+                      <span>⚡</span> Interview Rounds ({exp.rounds.length})
                     </h3>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
+                      {exp.rounds.map((round, idx) => {
+                        const roundType = String(round.type || "Interview").toUpperCase();
+                        let badgeStyle = "border-sky-500/30 bg-sky-500/15 text-sky-300";
+                        if (roundType.includes("OA")) badgeStyle = "border-cyan-500/40 bg-cyan-500/15 text-cyan-300";
+                        else if (roundType.includes("TECH") || roundType.includes("DSA")) badgeStyle = "border-emerald-500/40 bg-emerald-500/15 text-emerald-300";
+                        else if (roundType.includes("HR") || roundType.includes("MANAGE")) badgeStyle = "border-amber-500/40 bg-amber-500/15 text-amber-300";
+                        else if (roundType.includes("LLD") || roundType.includes("SYSTEM")) badgeStyle = "border-purple-500/40 bg-purple-500/15 text-purple-300";
 
-                      {exp.rounds.map((round, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-lg border border-white/10 bg-slate-950/50 p-4"
-                        >
+                        return (
+                          <div key={idx} className="exp-round-card">
+                            {/* Round Header */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2.5 mb-3">
+                              <div className="flex items-center gap-2.5">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-slate-200">
+                                  {round.roundNo || idx + 1}
+                                </span>
+                                <span className={`rounded-md border px-2.5 py-0.5 text-xs font-bold tracking-wide ${badgeStyle}`}>
+                                  {round.type || "Interview Round"}
+                                </span>
+                              </div>
 
-                          {/* Round title */}
-                          <p className="text-sm font-semibold text-white">
-                            Round {round.roundNo}:{" "}
-                            {round.type || "Interview"}
-                          </p>
-
-                          {/* Description */}
-                          {round.description ? (
-                            <p className="mt-2 text-sm leading-6 text-slate-300">
-                              {round.description}
-                            </p>
-                          ) : null}
-
-                          {/* Problems */}
-                          {Array.isArray(
-                            round.problemsAsked
-                          ) &&
-                          round.problemsAsked.length > 0 ? (
-                            <div className="mt-3 text-sm text-slate-300">
-
-                              <p className="font-semibold text-white">
-                                Problems asked:
-                              </p>
-
-                              <ul className="mt-2 list-disc space-y-1 pl-5">
-                                {round.problemsAsked.map(
-                                  (problem, pIdx) => (
-                                    <li key={pIdx}>
-                                      {problem}
-                                    </li>
-                                  )
-                                )}
-                              </ul>
-
+                              {round.duration && (
+                                <span className="text-xs text-slate-400 flex items-center gap-1">
+                                  <span>⏱️</span> {round.duration}
+                                </span>
+                              )}
                             </div>
-                          ) : null}
 
-                        </div>
-                      ))}
+                            {/* Description */}
+                            {round.description && (
+                              <p className="mb-3 text-sm leading-relaxed text-slate-200 whitespace-pre-line">
+                                {round.description}
+                              </p>
+                            )}
 
+                            {/* Topics Covered */}
+                            {Array.isArray(round.topics) && round.topics.length > 0 && (
+                              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                                <span className="text-xs font-medium text-slate-400 mr-1">Topics:</span>
+                                {round.topics.map((topic, tIdx) => (
+                                  <span key={tIdx} className="exp-topic-chip">
+                                    #{topic}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Problems Asked */}
+                            {Array.isArray(round.problemsAsked) && round.problemsAsked.length > 0 && (
+                              <div className="mt-2.5 rounded-lg bg-black/30 border border-white/5 p-3">
+                                <p className="mb-2 text-xs font-semibold text-teal-300 flex items-center gap-1.5">
+                                  <span>💻</span> Coding Problems Asked:
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {round.problemsAsked.map((problem, pIdx) => (
+                                    <span key={pIdx} className="exp-problem-chip">
+                                      <span className="text-cyan-400 opacity-75 font-bold">⟨/⟩</span>
+                                      {problem}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                ) : null}
+                )}
 
+                {/* Tips & Resources Footer */}
+                {(exp.tips || (Array.isArray(exp.resources) && exp.resources.length > 0)) && (
+                  <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5 text-sm">
+                    {exp.tips && (
+                      <p className="text-slate-200">
+                        <strong className="text-amber-300 flex items-center gap-1 mb-1">
+                          <span>💡</span> Candidate Prep Tips:
+                        </strong>
+                        {exp.tips}
+                      </p>
+                    )}
+                    {Array.isArray(exp.resources) && exp.resources.length > 0 && (
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5 pt-2 border-t border-amber-500/10">
+                        <span className="text-xs font-medium text-amber-300/80">Recommended Resources:</span>
+                        {exp.resources.map((res, rIdx) => (
+                          <span key={rIdx} className="rounded bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200">
+                            {res}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

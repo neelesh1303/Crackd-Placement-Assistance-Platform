@@ -13,10 +13,12 @@ import ProgressDashboard from "./pages/ProgressDashboard";
 import RoadmapDetailsPage from "./pages/RoadmapDetailsPage";
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
+import CodingCompanion from "./components/CodingCompanion";
 
 function App() {
   return (
     <BrowserRouter>
+      <CodingCompanion />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
