@@ -1,19 +1,8 @@
 const Problem = require("../models/Problem");
 const Company = require("../models/Company");
-
-// HF_API_TOKEN aur HF_MODEL env file se aate hain
-// Llama-3.1-8B-Instruct ke liye HuggingFace Pro access chahiye,
-// isliye default model Mistral rakha hai jo free tier me bhi kaam karta hai
-const HF_API_TOKEN = process.env.HF_API_TOKEN;
-const HF_MODEL = process.env.HF_MODEL || "meta-llama/Llama-3.1-8B-Instruct";
-const HF_TIMEOUT_MS = Number(process.env.HF_TIMEOUT_MS) || 60000;
+const { generateGeminiContent, extractAnswerText } = require("../services/ragService");
 const ROADMAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const roadmapCache = new Map();
-
-// [DEBUG] Ye lines server start hone par token aur model log karti hain
-// Agar token "false" print ho raha hai to dotenv.config() check karo apne server.js/app.js me
-console.log("[DEBUG] HF_API_TOKEN present:", !!HF_API_TOKEN);
-console.log("[DEBUG] HF_MODEL:", HF_MODEL);
 
 const DEFAULT_TOPICS = [
   "Arrays",
@@ -203,91 +192,12 @@ function buildFallbackRoadmap({ role, weeks, weakTopics, companyTopics }) {
   return { weeklyPlan, checklist, source: "fallback" };
 }
 
-// HuggingFace Inference API ko direct REST call se use karte hain — SDK dependency avoid hoti hai
-// FIX 1: response_format hataya — Llama/Mistral models ye parameter support nahi karte,
-//         isse model ya to fail ho jaata tha ya empty response deta tha → fallback trigger hota tha
-// FIX 2: Free tier compatible models ka default rakha hai (Mistral-7B)
-async function callHuggingFace(prompt) {
-  if (!HF_API_TOKEN) {
-    console.warn("[roadmap] HF_API_TOKEN missing — skipping AI call, using fallback");
-    return null;
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), HF_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(
-      "https://router.huggingface.co/v1/chat/completions",
-      {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${HF_API_TOKEN}`,
-      },
-      body: JSON.stringify({
-        model: HF_MODEL,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.2,   // low temperature se consistent JSON output milta hai
-        max_tokens: 700,
-        // FIX: response_format HATAYA — ye sirf OpenAI ke specific models support karte hain
-        // Llama/Mistral pe ye parameter error ya empty response cause karta tha
-        // JSON enforce karne ke liye ab prompt me hi instruction di gayi hai
-      }),
-        signal: controller.signal,
-      }
-    );
-
-    if (!response.ok) {
-    // HF API failure ka exact reason log karte hain taaki root cause samajh aaye
-    // 401 = token galat, 403 = model access nahi, 404 = model exist nahi
-    console.error(`[roadmap] Hugging Face API error: ${response.status} ${response.statusText}`);
-    const errText = await response.text().catch(() => "");
-    console.error(`[roadmap] Hugging Face error body: ${errText.slice(0, 2000)}`);
-      throw new Error(`Hugging Face API error ${response.status}`);
-    }
-
-    const data = await response.json().catch((err) => {
-    console.error(`[roadmap] Failed to parse Hugging Face JSON response: ${err.message}`);
-    return null;
-    });
-
-    if (data) {
-    try {
-      console.debug(`[roadmap] Hugging Face raw response: ${JSON.stringify(data).slice(0, 2000)}`);
-    } catch (e) {
-      // stringify fail hone par silently ignore karo
-    }
-    }
-
-  // chat-completions response structure se assistant ka text content nikalte hain
-    let text = null;
-    if (typeof data?.choices?.[0]?.message?.content === "string") {
-      text = data.choices[0].message.content.trim();
-    }
-
-    if (!text) {
-    console.warn("[roadmap] Hugging Face returned empty text content");
-    } else {
-    console.debug(`[roadmap] Hugging Face text snippet: ${text.slice(0, 2000)}`);
-    }
-
-    return text || null;
-  } catch (error) {
-    if (error.name === "AbortError") {
-      throw new Error(`Hugging Face timed out after ${HF_TIMEOUT_MS}ms`);
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-// AI se roadmap generate karne ki koshish karta hai
-// FIX 3: Prompt me ab strict JSON-only instructions add ki hain
-// Llama/Mistral ke liye yahi tarika kaam karta hai kyunki response_format support nahi hota
+// Generate a roadmap with Gemini; the controller retains the template fallback.
 async function tryAIGeneration({ companyName, role, weeks, hoursPerDay, weakTopics, strongTopics, companyTopics }) {
-  if (!HF_API_TOKEN) return null;
+  if (!process.env.GEMINI_API_KEY?.trim()) {
+    console.warn("[roadmap] GEMINI_API_KEY missing; skipping AI call and using fallback");
+    return null;
+  }
 
   const cacheKey = JSON.stringify({ companyName, role, weeks, hoursPerDay, weakTopics, strongTopics, companyTopics });
   const cached = roadmapCache.get(cacheKey);
@@ -317,7 +227,15 @@ async function tryAIGeneration({ companyName, role, weeks, hoursPerDay, weakTopi
     "Remember: Respond with ONLY the JSON object containing weeklyPlan. No text before or after.",
   ].join("\n");
 
-  const text = await callHuggingFace(prompt);
+  const data = await generateGeminiContent({
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: 3000,
+      responseMimeType: "application/json",
+    },
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+  });
+  const text = extractAnswerText(data);
   const parsed = safeParseAIJson(text);
   if (!parsed) {
     console.warn("[roadmap] AI response parse nahi hua — fallback use hoga");
@@ -378,7 +296,7 @@ async function tryAIGeneration({ companyName, role, weeks, hoursPerDay, weakTopi
   const result = {
     weeklyPlan: cleanedWeeklyPlan,
     checklist: cleanedChecklist,
-    source: "huggingface",
+    source: "gemini",
   };
 
   roadmapCache.set(cacheKey, { value: result, expiresAt: Date.now() + ROADMAP_CACHE_TTL_MS });
@@ -461,7 +379,7 @@ exports.generateRoadmap = async (req, res) => {
           weeks: safeWeeks,
           hoursPerDay: safeHours,
         },
-        source: finalPlan.source,   // "huggingface" ya "fallback" — debug ke liye useful
+        source: finalPlan.source,
         weeklyPlan: finalPlan.weeklyPlan,
         checklist: finalPlan.checklist,
       },

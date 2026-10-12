@@ -463,6 +463,8 @@ Strict Rules:
 module.exports = {
   answerQuestion,
   createGeminiEmbedding,
+  generateGeminiContent: generateAnswer,
+  extractAnswerText,
   formatExperienceToText,
   syncAllExperiences,
   indexSingleExperience,

@@ -22,8 +22,7 @@ The platform uses a **React + Node.js + Express + MongoDB** architecture.
 
 AI functionality is split across two workflows:
 
-- **Hugging Face Inference API** → AI roadmap generation
-- **Google Gemini API** → RAG embeddings and AI-powered preparation assistant
+- **Google Gemini API** → AI roadmap generation, RAG embeddings, and preparation assistant
 
 **Redis** is supported as an optional caching layer.
 
@@ -76,7 +75,7 @@ The roadmap generator creates a preparation plan using:
 - Strong topics
 - Company-specific problem topics
 
-The backend sends the preparation context to the **Hugging Face Inference API** and normalizes the returned roadmap.
+The backend sends the preparation context to the **Google Gemini API** and normalizes the returned roadmap.
 
 Reliability mechanisms include:
 
@@ -313,7 +312,7 @@ Workflow:
 - Express Validator
 - Redis
 - OpenAI SDK dependency
-- Hugging Face Inference API
+- Google Gemini API
 - Google Gemini API
 
 ### Database
@@ -324,12 +323,11 @@ Workflow:
 
 **Roadmap generation**
 
-- Hugging Face Inference API
-- Configurable model through `HF_MODEL`
+- Gemini generative model through `GEMINI_MODEL`
+- API key configured through `GEMINI_API_KEY`
 
 **RAG / chatbot**
 
-- Gemini generative model through `GEMINI_MODEL`
 - Gemini Embeddings through `GEMINI_EMBEDDING_MODEL`
 - 768-dimensional stored embeddings
 - Cosine-similarity retrieval
@@ -373,8 +371,8 @@ Workflow:
       ┌─────────────────┐                       ┌──────────────────┐
       │     MongoDB     │                       │   AI Services    │
       │                 │                       │                  │
-      │ Users           │                       │ Hugging Face     │
-      │ Companies       │                       │ Gemini           │
+      │ Users           │                       │ Google Gemini    │
+      │ Companies       │                       │ Roadmap + RAG    │
       │ Experiences     │                       │                  │
       │ Problems        │                       └──────────────────┘
       │ Trackers        │
@@ -567,7 +565,7 @@ User Inputs
    Find Company Topics
           │
           ▼
-   Hugging Face API
+   Google Gemini API
           │
           ▼
    Parse + Normalize JSON
@@ -665,13 +663,10 @@ Example:
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
 
-HF_API_TOKEN=your_huggingface_token
-HF_MODEL=meta-llama/Llama-3.1-8B-Instruct
-HF_TIMEOUT_MS=60000
-
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash
 GEMINI_EMBEDDING_MODEL=gemini-embedding-001
+GEMINI_TIMEOUT_MS=60000
 
 PORT=5000
 ```
@@ -710,7 +705,7 @@ Create:
 backend/.env
 ```
 
-and configure MongoDB, JWT, Hugging Face, Gemini, and optional Redis settings.
+and configure MongoDB, JWT, Gemini, and optional Redis settings.
 
 ### 4. Start the backend
 
@@ -835,7 +830,6 @@ Configure `MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, `GEMINI_MODEL`, and `GEMI
 
 ### AI Services
 
-- Hugging Face Inference API
 - Google Gemini API
 
 ### Cache

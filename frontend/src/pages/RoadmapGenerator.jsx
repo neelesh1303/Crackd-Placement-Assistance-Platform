@@ -386,12 +386,12 @@ function RoadmapGenerator() {
                 Source:{" "}
                 <span
                   className={`font-semibold ${
-                    roadmap.source === "huggingface"
+                    roadmap.source === "gemini"
                       ? "text-emerald-600"
                       : "text-amber-600"
                   }`}
                 >
-                  {roadmap.source === "huggingface" ? "AI Generated ✓" : "Fallback (Template)"}
+                  {roadmap.source === "gemini" ? "AI Generated ✓" : "Fallback (Template)"}
                 </span>{" "}
                 | Company:{" "}
                 <span className="font-semibold">{roadmap.meta.company}</span> | Role:{" "}

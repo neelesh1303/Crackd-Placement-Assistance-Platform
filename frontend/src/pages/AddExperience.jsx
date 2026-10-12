@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import PageShell from "../components/PageShell";
@@ -36,21 +36,6 @@ function AddExperience() {
 
 
 
-
-  const [companies, setCompanies] = useState([]);
-  void companies;
-
-  useEffect(() => {
-    const fetchCompanies = async () => { //is function ka use hm companies data fetch karne ke liye karenge, taki user experience create karte waqt company select kar sake. ye function /companies endpoint se data fetch karega, aur usse companies state me set karega. ye companies state fir company select dropdown me use hogi.
-      try {
-        const res = await api.get("/companies");
-        setCompanies(res.data.companies || []); //jab companies data fetch hota hai to usse companies state me set kar denge, taki wo company select dropdown me dikhai de. agar res.data.companies undefined hai to default empty array use karenge, taki dropdown me koi option na aaye, lekin error na de.
-      } catch (err) {
-        console.error("Failed to load companies", err);
-      }
-    };
-    fetchCompanies();
-  }, []);
 
   const handleBasicChange = (e) => { //ye function basic input fields ke change ko handle karega, jaise company, role, year, ctc, cgpaCutoff, tips, resources, prepTime, gotOffer. ye function input field ke name attribute ke basis par form state me us specific field ko update karega. agar input type checkbox hai to uske checked property ko update karega, otherwise value property ko update karega.
     const { name, value, type, checked } = e.target;
