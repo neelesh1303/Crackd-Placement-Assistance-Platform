@@ -51,5 +51,8 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Run unit tests
+        run: npm test
+
       - name: App load check
         run: node -e "require('./src/app.js'); console.log('app.js loads fine')"
