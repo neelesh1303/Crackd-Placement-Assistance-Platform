@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "node --test test/collegeEmail.test.js",
+    "test": "node --test test/collegeEmail.test.js test/auth.test.js",
     "ingest:knowledge": "node src/utils/ingestKnowledge.js",
     "seed:companies": "node src/utils/seedCompanies.js"
   },

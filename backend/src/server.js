@@ -15,7 +15,7 @@ const startServer = async () => {
   syncAllExperiences().catch((err) =>
     console.warn("[server] Background knowledge sync warning:", err.message)
   );
-
+  
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
