@@ -121,31 +121,3 @@ exports.createExperience = async (req, res) => {
   }
 };
 
-exports.toggleUpvoteExperience = async (req, res) => {
-  try {
-    const experience = await Experience.findById(req.params.id); //experience id ke basis par experience document ko database se find kiya jata hai, taki hum us experience ke upvotes array ko check kar sake aur update kar sake. agar experience nahi milta hai to 404 status code ke sath "Experience not found" message return kiya jata hai.
-    if (!experience) {
-      return res.status(404).json({ message: "Experience not found" });
-    }
-
-    const userId = req.user.id;
-    const alreadyUpvoted = experience.upvotes.some((id) => id.toString() === userId); //experience ke upvotes array me check kiya jata hai ki kya current user ka id already upvotes me exist karta hai ya nahi. agar exist karta hai to alreadyUpvoted variable true ho jayega, otherwise false. isse hume pata chalega ki user ne pehle se hi is experience ko upvote kiya hai ya nahi, taki hum uske basis par upvote ko toggle kar sake.
-
-    if (alreadyUpvoted) {
-      experience.upvotes = experience.upvotes.filter((id) => id.toString() !== userId);
-    } else {
-      experience.upvotes.push(userId);
-    }
-
-    await experience.save();
-
-    res.status(200).json({
-      success: true,
-      upvotesCount: experience.upvotes.length,
-      upvoted: !alreadyUpvoted,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-

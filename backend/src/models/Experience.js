@@ -16,7 +16,7 @@ const roundSchema = new mongoose.Schema( //roundSchema is a subdocument schema, 
   { _id: false } //_id: false option se ye ensure hota hai ki roundSchema ke subdocuments me automatically _id field generate na ho, kyunki har round ke details ke liye unique _id ki zarurat nahi hoti. isse database me unnecessary _id fields create hone se bachaya jata hai, aur storage space bhi save hota hai.
 );
 
-const experienceSchema = new mongoose.Schema( //experienceSchema is the main schema which represents the placement experience shared by users. isme company reference, role, year, ctc, cgpa cutoff, postedBy user reference, isSenior flag, rounds details, tips, resources, gotOffer flag, prepTime aur upvotes fields store kiye jate hain. ye schema users ke dwara share kiye gaye placement experiences ko structure karta hai aur database me store karta hai.
+const experienceSchema = new mongoose.Schema( //experienceSchema represents the placement experiences shared by users.
   {
     company: {
       type: mongoose.Schema.Types.ObjectId, //company field me company ke ObjectId reference ko store kiya jata hai jisse fir se company details na store karni pade, aur jab experience data retrieve karte hain to populate karke company ke details fetch kar sakte hain. isse data normalization hoti hai, aur database me redundancy kam hoti hai.
@@ -40,7 +40,6 @@ const experienceSchema = new mongoose.Schema( //experienceSchema is the main sch
     resources: [{ type: String, trim: true }],
     gotOffer: { type: Boolean, default: false },
     prepTime: { type: String, default: "" },
-    upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   },
   { timestamps: true } //timestamps: true option se createdAt aur updatedAt fields automatically add ho jate hain, jisse hume manually date fields manage karne ki zarurat nahi hoti. isse hume pata chal sakta hai ki experience kab create hua tha aur kab last update hua tha, jo ki useful information hoti hai data management ke liye.
 );
