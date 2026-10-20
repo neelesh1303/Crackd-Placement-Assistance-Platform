@@ -1,875 +1,286 @@
-# Crackd — AI-Powered Placement Assistance Platform
+# Crackd — Placement Assistance Platform
 
-> A full-stack MERN platform for technical-placement preparation using real interview experiences, company-specific preparation, AI-generated roadmaps, progress tracking, analytics, and a RAG-powered preparation assistant.
+Crackd is a MERN application for placement preparation. Students can explore companies, share interview experiences, generate and track study roadmaps, and ask an AI assistant questions grounded in available interview data.
 
-## 🚀 Overview
+## Features
 
-**Crackd** brings the major parts of placement preparation into one platform.
+- **Accounts:** registration for `@nie.ac.in` addresses, password hashing, JWT login, and protected pages and APIs.
+- **Company explorer:** searchable company directory and company detail pages.
+- **Interview experiences:** browse and submit interview experiences with rounds, questions, topics, tips, resources, and offer outcomes.
+- **AI roadmaps:** generate a weekly study plan with Google Gemini using the target role, company, preparation duration, available hours, and selected strong/weak topics. If Gemini is not configured or generation fails, the API returns a template roadmap.
+- **Progress tracking:** save one active roadmap per user, update checklist status, and view readiness and study streak information.
+- **Preparation assistant:** ask questions about indexed interview experiences. Answers include source details when relevant data is available.
+- **Analytics and problem APIs:** backend endpoints expose experience analytics and interview-problem data.
 
-Students can:
+## Technology
 
-- Explore companies and company-specific interview information
-- Read and submit real interview experiences
-- Review interview rounds and coding problems
-- Generate personalized placement-preparation roadmaps
-- Track preparation using checklists, readiness percentage, and study streaks
-- Analyze interview trends collected from the platform
-- Ask placement-preparation questions through an AI assistant
-- Get AI answers grounded in embedded study notes and live MongoDB interview data
-- Access protected features through JWT authentication
+| Area | Technologies |
+|---|---|
+| Frontend | React 19, React Router, Vite, Tailwind CSS, Axios |
+| Backend | Node.js, Express 5, Mongoose, JWT, bcryptjs |
+| Database | MongoDB |
+| AI | Google Gemini API for roadmap generation, text generation, and embeddings |
+| Optional cache | Redis |
+| Testing | Node.js `node:test`, Jest, Supertest |
+| CI | GitHub Actions |
 
-The platform uses a **React + Node.js + Express + MongoDB** architecture.
-
-AI functionality is split across two workflows:
-
-- **Google Gemini API** → AI roadmap generation, RAG embeddings, and preparation assistant
-
-**Redis** is supported as an optional caching layer.
-
----
-
-## ✨ Key Features
-
-### 🔐 Authentication & Access Control
-
-- User registration and login
-- JWT-based authentication
-- Protected frontend routes
-- Protected backend APIs
-- Password hashing with `bcryptjs`
-- NIE college-email restriction using `@nie.ac.in`
-- Request validation using `express-validator`
-
-### 🏢 Company Explorer
-
-- Browse companies available on the platform
-- Company-specific difficulty information
-- Company detail pages
-- Company-specific interview preparation data
-- Company slugs for clean URLs
-
-### 📝 Interview Experience Sharing
-
-Users can contribute interview experiences containing:
-
-- Company
-- Role
-- Year
-- Interview rounds
-- Round type
-- Questions/problems
-- Preparation tips
-- Offer outcome
-
-This creates a shared interview-preparation knowledge base.
-
-### 🤖 AI-Powered Roadmap Generator
-
-The roadmap generator creates a preparation plan using:
-
-- Target company
-- Target role
-- Number of preparation weeks
-- Daily study hours
-- Weak topics
-- Strong topics
-- Company-specific problem topics
-
-The backend sends the preparation context to the **Google Gemini API** and normalizes the returned roadmap.
-
-Reliability mechanisms include:
-
-- Strict JSON-only prompting
-- Safe JSON extraction/parsing
-- Response normalization
-- In-memory roadmap caching
-- Request timeout handling
-- Automatic fallback roadmap generation when AI is unavailable
-
-#### Roadmap fallback
-
-If AI generation fails, Crackd can still construct a roadmap by combining:
-
-- User-provided weak topics
-- Company-specific topics
-- Default preparation topics
-
-This keeps roadmap generation functional even when the AI service is unavailable.
-
----
-
-## 🧠 RAG-Powered Preparation Assistant
-
-Crackd includes a simple **Retrieval-Augmented Generation (RAG)** chatbot for placement preparation.
-
-The assistant combines two sources of context:
-
-1. **Embedded study notes**
-2. **Live MongoDB interview data**
-
-### RAG pipeline
+## Application structure
 
 ```text
-                    User Question
-                          │
-                          ▼
-                 Gemini Embedding API
-                          │
-                          ▼
-                  Query Embedding
-                          │
-             ┌────────────┴────────────┐
-             ▼                         ▼
-     KnowledgeChunk DB          MongoDB Interview Data
-             │                         │
-             │                  Topic / Year Filtering
-             │                         │
-             ▼                         ▼
-     Cosine Similarity          Problems + Experiences
-             │                         │
-             └────────────┬────────────┘
-                          ▼
-                   Retrieved Context
-                          │
-                          ▼
-                     Gemini LLM
-                          │
-                          ▼
-                  Grounded Answer
-                          │
-                          ▼
-                     Sources
-```
-
-### Knowledge-base ingestion
-
-Study material is stored in:
-
-```text
-backend/src/data/knowledge/
-```
-
-Current knowledge files include:
-
-```text
-binary-search.md
-interview-preparation.md
-```
-
-The ingestion utility:
-
-1. Reads `.md` / `.txt` knowledge files
-2. Splits text into chunks of up to 300 words
-3. Generates Gemini embeddings
-4. Stores chunks and embeddings in MongoDB
-5. Makes them available for semantic retrieval
-
-Run ingestion from the `backend` directory:
-
-```bash
-npm run ingest:knowledge
-```
-
-### Semantic retrieval
-
-For a user question:
-
-1. Gemini creates a query embedding.
-2. Stored knowledge embeddings are loaded from MongoDB.
-3. Crackd calculates **cosine similarity** between the query and stored chunks.
-4. The top 4 matching chunks are retrieved.
-5. Matching interview problems and experiences are also retrieved from MongoDB.
-6. Both contexts are provided to Gemini.
-7. Gemini generates the final answer.
-
-The chatbot also returns retrieved sources with similarity scores where available.
-
-### Database-aware retrieval
-
-The assistant can detect supported topics and requested years from the question.
-
-Supported topic aliases currently include:
-
-- Binary Search
-- Greedy
-- Dynamic Programming
-- Sliding Window
-- Two Pointers
-- Linked List
-- Arrays
-- Strings
-- Trees
-- Graphs
-
-This allows questions about interview data to be filtered using the actual MongoDB records instead of relying only on generated knowledge.
-
-The assistant is explicitly instructed not to invent companies, years, or interview questions when matching database records do not exist.
-
----
-
-## 📈 Progress Tracking
-
-Students can track:
-
-- Weekly preparation plan
-- Topic checklist
-- `todo` / `in-progress` / `done` states
-- Readiness percentage
-- Completed topics
-- Current streak
-- Longest streak
-- Last activity date
-
-### Readiness
-
-```text
-Readiness % =
-(completed topics / total topics) × 100
-```
-
-### Study streak
-
-```text
-Activity today
-      │
-      ├── Already active today → keep streak
-      │
-      ├── Active yesterday → increment streak
-      │
-      └── Otherwise → reset to 1
-```
-
----
-
-## 📊 Analytics Dashboard
-
-The backend calculates analytics from interview experiences, including:
-
-- Company-wise experience counts
-- Offer rates
-- Interview round frequency
-- Year-wise experience trends
-- Most common roles
-
-MongoDB aggregation pipelines are used for these calculations.
-
----
-
-## ⚡ Redis Caching
-
-Redis is supported as an optional caching layer.
-
-The application can continue running when Redis is unavailable instead of failing backend startup.
-
-The roadmap controller also maintains a temporary in-memory cache for repeated AI roadmap requests with identical inputs.
-
----
-
-## 🔄 CI Pipeline
-
-GitHub Actions runs on:
-
-- Pushes to `main`
-- Pull requests targeting `main`
-
-### Frontend CI
-
-- Installs dependencies with `npm ci`
-- Runs ESLint
-- Runs the production build
-
-### Backend CI
-
-- Installs dependencies with `npm ci`
-- Verifies that `src/app.js` loads successfully
-
-Workflow:
-
-```text
-.github/workflows/ci.yml
-```
-
----
-
-## 🛠️ Tech Stack
-
-### Frontend
-
-- React 19
-- React Router
-- Vite
-- Tailwind CSS
-- Axios
-- React Hot Toast
-
-### Backend
-
-- Node.js
-- Express.js
-- Mongoose
-- JWT
-- bcryptjs
-- Express Validator
-- Redis
-- OpenAI SDK dependency
-- Google Gemini API
-- Google Gemini API
-
-### Database
-
-- MongoDB
-
-### AI
-
-**Roadmap generation**
-
-- Gemini generative model through `GEMINI_MODEL`
-- API key configured through `GEMINI_API_KEY`
-
-**RAG / chatbot**
-
-- Gemini Embeddings through `GEMINI_EMBEDDING_MODEL`
-- 768-dimensional stored embeddings
-- Cosine-similarity retrieval
-
-### DevOps / Tooling
-
-- Git
-- GitHub
-- GitHub Actions
-- ESLint
-- Nodemon
-
----
-
-## 🏗️ Architecture
-
-```text
-                         ┌─────────────────────┐
-                         │       Student       │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │   React Frontend    │
-                         │ React Router / Axios │
-                         │     Tailwind CSS    │
-                         └──────────┬──────────┘
-                                    │ REST API
-                                    ▼
-                         ┌─────────────────────┐
-                         │  Express.js Backend │
-                         │                     │
-                         │ Routes              │
-                         │ Controllers         │
-                         │ Middleware          │
-                         │ Services            │
-                         └──────┬───────┬──────┘
-                                │       │
-               ┌────────────────┘       └─────────────────┐
-               ▼                                          ▼
-      ┌─────────────────┐                       ┌──────────────────┐
-      │     MongoDB     │                       │   AI Services    │
-      │                 │                       │                  │
-      │ Users           │                       │ Google Gemini    │
-      │ Companies       │                       │ Roadmap + RAG    │
-      │ Experiences     │                       │                  │
-      │ Problems        │                       └──────────────────┘
-      │ Trackers        │
-      │ KnowledgeChunks │
-      └────────┬────────┘
-               │
-               ▼
-      ┌─────────────────┐
-      │      Redis      │
-      │ Optional Cache  │
-      └─────────────────┘
-```
-
----
-
-## 📁 Project Structure
-
-```text
-Crackd-Placement-Assistance-Platform/
-│
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-│
+.
+├── .github/workflows/ci.yml
 ├── backend/
 │   ├── src/
-│   │   ├── config/
-│   │   │   ├── db.js
-│   │   │   └── redis.js
-│   │   │
-│   │   ├── controllers/
-│   │   │   ├── analyticsController.js
-│   │   │   ├── authController.js
-│   │   │   ├── chatController.js
-│   │   │   ├── companyController.js
-│   │   │   ├── experienceController.js
-│   │   │   ├── problemController.js
-│   │   │   ├── roadmapController.js
-│   │   │   └── trackerController.js
-│   │   │
-│   │   ├── data/
-│   │   │   └── knowledge/
-│   │   │       ├── binary-search.md
-│   │   │       └── interview-preparation.md
-│   │   │
-│   │   ├── middleware/
-│   │   │   ├── auth.js
-│   │   │   └── collegeEmail.js
-│   │   │
-│   │   ├── models/
-│   │   │   ├── Company.js
-│   │   │   ├── Experience.js
-│   │   │   ├── KnowledgeChunk.js
-│   │   │   ├── Problem.js
-│   │   │   ├── Tracker.js
-│   │   │   └── User.js
-│   │   │
-│   │   ├── routes/
-│   │   │   ├── analyticsRoutes.js
-│   │   │   ├── authRoutes.js
-│   │   │   ├── chatRoutes.js
-│   │   │   ├── companyRoutes.js
-│   │   │   ├── experienceRoutes.js
-│   │   │   ├── problemRoutes.js
-│   │   │   ├── roadmapRoutes.js
-│   │   │   └── trackerRoutes.js
-│   │   │
-│   │   ├── services/
-│   │   │   └── ragService.js
-│   │   │
-│   │   ├── utils/
-│   │   │   ├── ingestKnowledge.js
-│   │   │   └── seedCompanies.js
-│   │   │
-│   │   ├── app.js
-│   │   └── server.js
-│   │
-│   └── package.json
-│
+│   │   ├── config/          # MongoDB and Redis setup
+│   │   ├── controllers/     # API request handlers
+│   │   ├── middleware/      # JWT and college-email checks
+│   │   ├── models/          # Mongoose models
+│   │   ├── routes/          # Express route modules
+│   │   ├── services/        # Gemini and retrieval logic
+│   │   ├── utils/           # Company seeding and experience indexing
+│   │   ├── app.js           # Express app, exported for tests
+│   │   └── server.js        # Database/cache connections and listener
+│   ├── test/                # Unit and API integration tests
+│   ├── .env.example
+│   ├── package.json
+│   └── package-lock.json
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
 │   │   ├── context/
 │   │   ├── pages/
-│   │   │   ├── Chat.jsx
-│   │   │   ├── Companies.jsx
-│   │   │   ├── CompanyDetail.jsx
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── ProgressDashboard.jsx
-│   │   │   ├── RoadmapDetailsPage.jsx
-│   │   │   └── RoadmapGenerator.jsx
-│   │   ├── services/
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   └── main.jsx
-│   │
-│   ├── public/
+│   │   └── services/api.js
+│   ├── .env.example
 │   ├── package.json
-│   └── vite.config.js
-│
+│   └── package-lock.json
 └── README.md
 ```
 
----
+## Frontend pages
 
-## 🔌 API Modules
+Public routes:
 
-The backend exposes REST APIs under `/api`.
+- `/` — landing page
+- `/login` — sign in
+- `/register` — create an account
 
-| Module | Base Route | Purpose |
-|---|---|---|
-| Authentication | `/api/auth` | Register and login |
-| Companies | `/api/companies` | Company data |
-| Experiences | `/api/experiences` | Interview experiences |
-| Problems | `/api/problems` | Interview/coding problems |
-| Roadmap | `/api/roadmap` | AI roadmap generation |
-| Tracker | `/api/tracker` | Preparation progress |
-| Analytics | `/api/analytics` | Placement analytics |
-| Chat | `/api/chat` | RAG-powered preparation assistant |
-| Health | `/api/health` | Backend health check |
+Protected routes:
 
-### Chat endpoint
+- `/dashboard` — preparation dashboard
+- `/companies` — company directory
+- `/companies/:slug` — company information and related interview experiences
+- `/add-experience` — submit an interview experience
+- `/roadmap` — generate a roadmap
+- `/progress` — review tracker progress
+- `/roadmap-details/:companySlug` — view saved roadmap details
+- `/chat` — AI preparation assistant
 
-```text
-POST /api/chat
+The frontend stores the JWT in `localStorage` and attaches it as a Bearer token to API requests. In development, the API defaults to `http://localhost:5000/api`; configure `VITE_API_BASE_URL` to point to another backend.
+
+## Backend API
+
+All endpoints are mounted under `/api`. Protected endpoints require:
+
+```http
+Authorization: Bearer <JWT>
 ```
 
-The route is protected by JWT authentication.
+| Method | Endpoint | Access | Purpose |
+|---|---|---|---|
+| `GET` | `/api/health` | Public | Check that the API is running |
+| `POST` | `/api/auth/register` | Public | Register an NIE student |
+| `POST` | `/api/auth/login` | Public | Authenticate and receive a JWT |
+| `GET` | `/api/auth/me` | Protected | Get the current user |
+| `GET` | `/api/companies` | Public | List companies; Redis may cache this result |
+| `GET` | `/api/companies/:slug` | Public | Get one company by slug |
+| `GET` | `/api/experiences` | Public | List experiences; optional `company`, `year`, and `role` query filters |
+| `POST` | `/api/experiences` | Protected | Create an interview experience |
+| `GET` | `/api/problems` | Protected | List problems; optional `company`, `difficulty`, `topic`, `role`, and `q` filters |
+| `POST` | `/api/problems` | Protected | Add an interview problem |
+| `POST` | `/api/roadmap/generate` | Protected | Generate a Gemini or fallback roadmap |
+| `POST` | `/api/tracker/save-roadmap` | Protected | Save or replace the user's active roadmap |
+| `GET` | `/api/tracker` | Protected | Get the active tracker |
+| `PUT` | `/api/tracker/checklist` | Protected | Update a checklist item |
+| `GET` | `/api/tracker/streak` | Protected | Get streak details |
+| `GET` | `/api/tracker/readiness` | Protected | Get readiness details |
+| `GET` | `/api/analytics/summary` | Protected | Get experience analytics |
+| `POST` | `/api/chat` | Protected | Ask the preparation assistant a question |
 
-Request:
+### Generate a roadmap
+
+`POST /api/roadmap/generate` accepts a JSON body such as:
 
 ```json
 {
-  "question": "How should I prepare binary search for interviews?"
+  "companySlug": "google",
+  "role": "SWE Intern",
+  "weeks": 8,
+  "hoursPerDay": 3,
+  "weakTopics": ["Dynamic Programming"],
+  "strongTopics": ["Arrays"]
 }
 ```
 
-The endpoint validates the question, retrieves relevant context, generates the answer, and returns the answer with retrieved sources.
+The response includes roadmap metadata, a `weeklyPlan`, a `checklist`, and `source`, which is `gemini` or `fallback`. Company problem topics are included when available.
 
----
+### Chat
 
-## 🔑 Authentication Flow
+`POST /api/chat` accepts:
 
-```text
-User
- │
- ├── Register / Login
- │
- ▼
-Backend
- │
- ├── Validate credentials
- ├── Hash / check password
- └── Generate JWT
- │
- ▼
-Frontend
- │
- └── Authorization: Bearer <token>
- │
- ▼
-Auth Middleware
- │
- ├── Extract token
- ├── Verify JWT
- └── Attach user information
- │
- ▼
-Protected Controller
+```json
+{
+  "question": "What interview topics have been reported for Google?"
+}
 ```
 
----
+The question is required and limited to 1,000 characters. The response contains an answer and any retrieved sources.
 
-## 🤖 AI Roadmap Flow
+## AI and retrieval
 
-```text
-User Inputs
-    │
-    ├── Company
-    ├── Role
-    ├── Weeks
-    ├── Hours/day
-    ├── Weak topics
-    └── Strong topics
-          │
-          ▼
-   Backend Validation
-          │
-          ▼
-   Find Company Topics
-          │
-          ▼
-   Google Gemini API
-          │
-          ▼
-   Parse + Normalize JSON
-          │
-          ├───────────────┐
-          │               │
-       Success          Failure
-          │               │
-          ▼               ▼
-   AI Roadmap        Fallback Roadmap
-          │               │
-          └───────┬───────┘
-                  ▼
-             Save Tracker
-                  │
-                  ▼
-          Progress Dashboard
-```
+Roadmap generation and the preparation assistant use the existing Gemini service configuration:
 
-The roadmap controller caches successful AI-generated results temporarily for repeated identical inputs.
+- `GEMINI_API_KEY` authenticates requests.
+- `GEMINI_MODEL` selects the text-generation model.
+- `GEMINI_EMBEDDING_MODEL` selects the embedding model.
 
----
+When a new interview experience is submitted, the backend attempts to index it in the `KnowledgeChunk` collection using a Gemini embedding. The `ingest:knowledge` command can sync existing MongoDB experiences into that collection. There are currently no bundled Markdown/TXT knowledge files.
 
-## 🧩 RAG Ingestion Flow
+For chat questions, the service compares query embeddings with stored experience embeddings using cosine similarity. If semantic results are unavailable, it can look for experiences belonging to a company explicitly mentioned in the question. Gemini is used to formulate an answer from the retrieved context; if no context is found, the assistant reports that it has no matching interview knowledge.
 
-```text
-Markdown / TXT files
-        │
-        ▼
-   Split into chunks
-   (up to 300 words)
-        │
-        ▼
- Gemini Embedding API
-        │
-        ▼
-  768-D embeddings
-        │
-        ▼
- MongoDB KnowledgeChunk
-```
+The roadmap generator keeps successful responses in an in-memory cache for 10 minutes. Company-list results can be cached in Redis. Redis is optional: the backend continues without it if the connection is unavailable.
 
-Run:
+## Requirements
+
+- Node.js 20 or newer
+- npm
+- MongoDB connection string
+- Gemini API key for AI generation and embeddings
+- Redis is optional
+
+## Local development
+
+### 1. Install dependencies
+
+From the repository root:
 
 ```bash
-npm run ingest:knowledge
+cd backend
+npm ci
 ```
 
-This recreates the knowledge chunks and embeddings from the files under `backend/src/data/knowledge/`.
+In another terminal:
 
----
-
-## 🧮 RAG Retrieval Flow
-
-```text
-Question
-   │
-   ▼
-Gemini query embedding
-   │
-   ▼
-Cosine similarity
-   │
-   ▼
-Top 4 knowledge chunks
-   │
-   ├───────────────┐
-   │               │
-   ▼               ▼
-Study notes    MongoDB interview data
-   │               │
-   └───────┬───────┘
-           ▼
-     Context prompt
-           │
-           ▼
-       Gemini model
-           │
-           ▼
-      Final answer
-           │
-           ▼
-   Retrieved sources
+```bash
+cd frontend
+npm ci
 ```
 
----
+### 2. Configure the backend
 
-## ⚙️ Environment Variables
-
-Create a `.env` file inside `backend`.
-
-Example:
+Copy `backend/.env.example` to `backend/.env` and set the required values:
 
 ```env
 MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-
+JWT_SECRET=your_long_random_secret
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash
 GEMINI_EMBEDDING_MODEL=gemini-embedding-001
 GEMINI_TIMEOUT_MS=60000
-
 PORT=5000
 ```
 
-If Redis is configured, add:
+Optionally configure Redis:
 
 ```env
-REDIS_URL=your_redis_connection_url
+REDIS_URL=redis://localhost:6379
 ```
 
-> Never commit `.env` files or API keys to GitHub.
+Do not commit `.env` files or expose API keys and database credentials.
 
----
+### 3. Start the backend
 
-## 💻 Local Setup
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/neelesh1303/Crackd-Placement-Assistance-Platform.git
-cd Crackd-Placement-Assistance-Platform
-```
-
-### 2. Install backend dependencies
-
-```bash
-cd backend
-npm install
-```
-
-### 3. Configure environment variables
-
-Create:
-
-```text
-backend/.env
-```
-
-and configure MongoDB, JWT, Gemini, and optional Redis settings.
-
-### 4. Start the backend
-
-Development mode:
+From `backend/`:
 
 ```bash
 npm run dev
 ```
 
-Production-style start:
+The API listens on the configured `PORT` (default `5000`).
 
-```bash
-npm start
-```
+### 4. Start the frontend
 
-### 5. Install frontend dependencies
-
-Open another terminal:
-
-```bash
-cd frontend
-npm install
-```
-
-### 6. Start the frontend
+From `frontend/`:
 
 ```bash
 npm run dev
 ```
 
-Vite will provide the local development URL in the terminal.
+Vite prints the local frontend URL in the terminal. To use a non-default backend, set `VITE_API_BASE_URL` in `frontend/.env`; for example, `http://localhost:5000`. The frontend adds `/api` unless the configured URL already ends in `/api`.
 
-### 7. Optional knowledge ingestion
+## Database utilities
 
-The assistant uses MongoDB interview records directly. Knowledge-note ingestion is optional; if no files exist in `backend/src/data/knowledge`, the assistant skips semantic retrieval and continues with database records.
+Run these commands from `backend/`.
 
----
-
-## 🌱 Seed Companies
-
-The backend includes a company seeding utility.
-
-From the `backend` directory:
+### Seed companies
 
 ```bash
 npm run seed:companies
 ```
 
----
+**Warning:** the seed script deletes all documents in the `companies` collection before inserting its built-in sample companies. Use only with a development/test database unless that replacement is intended.
 
-## 🧪 CI / GitHub Actions
+### Index existing interview experiences
 
-The project uses:
-
-```text
-.github/workflows/ci.yml
+```bash
+npm run ingest:knowledge
 ```
 
-On pushes and pull requests targeting `main`, the pipeline:
+This connects to MongoDB and syncs stored experiences into the `KnowledgeChunk` collection, generating embeddings when Gemini is available.
 
-1. Installs frontend dependencies with `npm ci`
-2. Runs frontend ESLint
-3. Runs the frontend production build
-4. Installs backend dependencies with `npm ci`
-5. Verifies that the Express application loads successfully
+## Tests
 
----
+From `backend/`:
 
-## 🔒 Security Considerations
-
-The project includes:
-
-- Password hashing using `bcryptjs`
-- JWT authentication
-- Protected API routes
-- Protected frontend routes
-- College-email validation
-- Request validation using `express-validator`
-- Environment variables for secrets
-- CORS configuration
-- Optional Redis caching
-- Input-length validation for chat requests
-
-For production deployment, additional hardening such as stricter CORS policies, secure cookie/token strategies, rate limiting, logging, and managed secret storage should be configured according to the deployment environment.
-
----
-
-## 🌐 Deployment
-
-The application can be deployed as separate frontend and backend services.
-
-### Frontend
-
-Possible platforms include:
-
-- Vercel
-- Netlify
-- Render
-
-For a separately deployed frontend, configure `VITE_API_BASE_URL` with the public backend URL, for example:
-
-```env
-VITE_API_BASE_URL=https://your-backend.example.com
+```bash
+npm test
 ```
 
-The frontend appends `/api` automatically. Do not add `/api` unless the value already includes that path.
+This runs:
 
-### Backend
+- `npm run test:unit` — Node.js `node:test` coverage for JWT auth middleware and the college-email middleware.
+- `npm run test:api` — Jest + Supertest integration tests for roadmap generation and company lookup by slug.
 
-Possible platforms include:
+The API tests mock company database lookups and Gemini's HTTP response. They do not call Gemini or require production database access.
 
-- Render
-- Railway
-- AWS
-- Other Node.js-compatible hosting platforms
+## Continuous integration
 
-Configure `MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, `GEMINI_MODEL`, and `GEMINI_EMBEDDING_MODEL` in the backend service environment. Use `gemini-2.5-flash` for `GEMINI_MODEL`.
+GitHub Actions workflow: `.github/workflows/ci.yml`
 
-### Database
+On pushes to `main` and pull requests targeting `main`, CI:
 
-- MongoDB Atlas
+1. Installs frontend and backend dependencies using `npm ci`.
+2. Runs frontend ESLint and a production build.
+3. Runs backend unit tests and Jest/Supertest API tests as separate steps.
+4. Checks that the backend Express app loads.
 
-### AI Services
+## Deployment
 
-- Google Gemini API
+Deploy the frontend and backend as separate services or use another compatible deployment setup.
 
-### Cache
+- **Frontend:** set `VITE_API_BASE_URL` to the public backend URL. The frontend appends `/api` automatically unless it is already present.
+- **Backend:** configure `MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, `GEMINI_MODEL`, and `GEMINI_EMBEDDING_MODEL` in the hosting platform's secret/environment settings. `PORT` is typically provided by the host.
+- **Redis:** optional; configure `REDIS_URL` only when using a Redis service.
 
-- Redis-compatible managed service
+The backend's health endpoint is `GET /api/health`.
 
-Make sure the deployed frontend points to the deployed backend API and that all required environment variables are configured in the hosting platform.
+## Security notes
 
----
-
-## 🔮 Future Improvements
-
-Potential improvements include:
-
-- Vector database for scalable semantic retrieval
-- More advanced chunking strategies
-- Metadata filtering for RAG retrieval
-- Reranking retrieved chunks
-- Streaming chatbot responses
-- Conversation history
-- Resume analysis and job matching
-- AI-powered mock interviews
-- AI-generated interview question explanations
-- Email notifications for preparation milestones
-- More granular role-specific roadmaps
-- Persistent distributed caching
-- Automated API tests
-- More comprehensive observability and error tracking
+- Passwords are hashed with `bcryptjs`.
+- Protected API endpoints use JWT authentication.
+- Registration is restricted to `@nie.ac.in` email addresses.
+- Keep credentials in environment variables or managed deployment secrets.
+- The current project does not configure rate limiting or a restrictive CORS origin policy; add production-specific controls before public deployment.
 
 ---
 
-## 👨‍💻 Author
-
-**Neelesh Kumar Tripathi**
-
-- GitHub: [neelesh1303](https://github.com/neelesh1303)
-- Codolio: [neelesh1303](https://codolio.com/profile/neelesh1303)
-
----
-
-## ⭐ Support
-
-If you find Crackd useful, consider giving the repository a ⭐ on GitHub.
+**Author:** Neelesh Kumar Tripathi · GitHub: [neelesh1303](https://github.com/neelesh1303) · Codolio: [neelesh1303](https://codolio.com/profile/neelesh1303)
