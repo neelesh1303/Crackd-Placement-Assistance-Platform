@@ -3,6 +3,7 @@ import PageShell from "../components/PageShell";
 import api from "../services/api";
 import { Notice } from "../components/Bits";
 import BotThinking from "../components/BotThinking";
+import MarkdownNote from "../components/MarkdownNote";
 import Robot from "../components/Robot";
 
 const STARTERS = [
@@ -99,7 +100,7 @@ function Chat() {
               <p className="hand mb-5 text-2xl text-[color:var(--blue)]">Q: {asked}</p>
             )}
             <p className="kicker mb-3"><b>A.</b> answer</p>
-            <p className="prose-note">{answer}</p>
+            <MarkdownNote text={answer} />
             {sources.length > 0 && (
               <div className="mt-8 border-t border-dashed border-[color:var(--ink-3)] pt-5">
                 <p className="kicker mb-3">Sources it read</p>
