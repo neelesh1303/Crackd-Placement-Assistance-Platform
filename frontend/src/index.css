@@ -670,16 +670,7 @@
 	@media (min-width: 1024px) { .colophon { padding-inline: 2rem; } }
 
 	/* ---- answer / prose ---- */
-	/* assistant answer, rendered from Markdown */
-	.md { font-size: 1.04rem; line-height: 1.7; }
-	.md > * + * { margin-top: 0.9rem; }
-	.md-h { margin-top: 1.6rem !important; font-size: 1.3rem; font-weight: 800; letter-spacing: -0.03em; }
-	.md-h:first-child { margin-top: 0 !important; }
-	.md strong { font-weight: 700; }
-	.md-code { padding: 0.05em 0.35em; border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent); border-radius: 4px; background: var(--paper-2); font-family: var(--font-mono); font-size: 0.86em; }
-	.md-list { margin-bottom: 0; padding: 0; list-style: none; }
-	.md-li { display: flex; gap: 0.65rem; padding: 0.2rem 0 0.2rem calc(var(--lvl, 0) * 1.6rem); }
-	.md-marker { flex-shrink: 0; min-width: 1rem; font-family: var(--font-mono); font-weight: 700; color: var(--red); }
+	.prose-note { font-size: 1.04rem; line-height: 1.75; white-space: pre-wrap; }
 
 	/* ---- entrance motion ---- */
 	.rise { animation: rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
