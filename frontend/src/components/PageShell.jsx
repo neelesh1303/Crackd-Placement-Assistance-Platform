@@ -1,5 +1,6 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import Logo from "./Logo";
+import AskFab from "./AskFab";
 import { useAuth } from "../context/useAuth";
 
 const tabs = [
@@ -83,6 +84,8 @@ function PageShell({ title, subtitle, activeTab, actions, note, children }) {
 
         <main>{children}</main>
       </div>
+
+      <AskFab />
 
       <footer className="colophon">
         <span>crackd — written in pencil, revised in pen.</span>

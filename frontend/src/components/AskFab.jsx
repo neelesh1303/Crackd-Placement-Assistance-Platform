@@ -2,8 +2,8 @@ import { Link, useLocation } from "react-router-dom";
 import Robot from "./Robot";
 
 // Glowing highlighter button pinned to the bottom-right that opens the Crackd bot.
-// Hidden on the chat page itself and on the auth screens.
-const HIDDEN_ON = ["/chat", "/login", "/register"];
+// Rendered by PageShell, so it only appears on logged-in pages; hidden on the chat page itself.
+const HIDDEN_ON = ["/chat"];
 
 function AskFab() {
   const { pathname } = useLocation();
