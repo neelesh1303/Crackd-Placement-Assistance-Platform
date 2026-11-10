@@ -1,9 +1,17 @@
 import { useState } from "react";
 import PageShell from "../components/PageShell";
 import api from "../services/api";
+import { Loader, Notice } from "../components/Bits";
+
+const STARTERS = [
+  "How should I prepare binary search for interviews?",
+  "What do companies usually ask in the OA round?",
+  "Which DP problems come up most often?",
+];
 
 function Chat() {
   const [question, setQuestion] = useState("");
+  const [asked, setAsked] = useState("");
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -16,6 +24,7 @@ function Chat() {
 
     setLoading(true);
     setError("");
+    setAsked(trimmedQuestion);
     try {
       const response = await api.post("/chat", { question: trimmedQuestion });
       setAnswer(response.data.answer || "No answer was returned.");
@@ -29,48 +38,64 @@ function Chat() {
 
   return (
     <PageShell
-      title="Prep assistant"
-      subtitle="Ask questions about interview preparation and get answers grounded in Crackd's study notes."
+      title={<>Ask a <span className="serif italic">senior.</span></>}
+      subtitle="Ask anything about interview prep. Answers come from the interview experiences people have shared on Crackd."
       activeTab="chat"
     >
-      <div className="mx-auto grid max-w-4xl gap-6">
-        <form onSubmit={handleSubmit} className="chat-composer p-5">
-          <label htmlFor="chat-question" className="chat-field-label mb-2 block">
-            Your question
-          </label>
+      <div className="mx-auto grid max-w-3xl gap-8">
+        <form onSubmit={handleSubmit} className="sheet taped sheet-pad">
+          <label htmlFor="chat-question" className="field-label">Your question</label>
           <textarea
             id="chat-question"
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) handleSubmit(event);
+            }}
             placeholder="How should I prepare binary search for interviews?"
             rows={4}
             maxLength={1000}
-            className="resize-y p-4"
+            className="field text-lg"
           />
-          <div className="mt-4 flex items-center justify-between gap-4">
-            <span className="chat-counter">{question.length}/1000</span>
+
+          {!question && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {STARTERS.map((starter) => (
+                <button key={starter} type="button" onClick={() => setQuestion(starter)} className="chip">
+                  {starter}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-5 flex items-center justify-between gap-4">
+            <span className="mono text-xs faint">{question.length}/1000 · ctrl+enter to send</span>
             <button
               type="submit"
               disabled={loading || !question.trim()}
-              className="chat-submit px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn btn-ink"
             >
-              {loading ? "Thinking..." : "Ask assistant"}
+              {loading ? "Thinking…" : <>Ask <span className="arrow">→</span></>}
             </button>
           </div>
         </form>
 
-        {error && <p className="chat-error p-4 text-sm">{error}</p>}
+        {loading && <Loader label="Flipping through the notes" />}
+        {error && <Notice tone="error">{error}</Notice>}
 
-        {answer && (
-          <section className="chat-answer p-6">
-            <p className="chat-section-label mb-4">Answer</p>
-            <p className="chat-answer-text whitespace-pre-wrap">{answer}</p>
+        {answer && !loading && (
+          <section className="sheet sheet-pad rise">
+            {asked && (
+              <p className="hand mb-5 text-2xl text-[color:var(--blue)]">Q: {asked}</p>
+            )}
+            <p className="kicker mb-3"><b>A.</b> answer</p>
+            <p className="prose-note">{answer}</p>
             {sources.length > 0 && (
-              <div className="chat-sources mt-6 pt-5">
-                <p className="chat-section-label mb-3">Retrieved context</p>
+              <div className="mt-8 border-t border-dashed border-[color:var(--ink-3)] pt-5">
+                <p className="kicker mb-3">Sources it read</p>
                 <div className="flex flex-wrap gap-2">
                   {sources.map((source) => (
-                    <span key={`${source.source}-${source.score}-${source.title}`} className="chat-source px-3 py-2 text-xs">
+                    <span key={`${source.source}-${source.score}-${source.title}`} className="tag tag-sq">
                       {source.title}
                     </span>
                   ))}

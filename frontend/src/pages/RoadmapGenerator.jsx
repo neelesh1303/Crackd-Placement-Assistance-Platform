@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import PageShell from "../components/PageShell";
+import { Loader, Notice } from "../components/Bits";
 
 const STATES = ["todo", "in-progress", "done"];
 
@@ -186,274 +187,233 @@ function RoadmapGenerator() {
     }
   };
 
-  // topic chip ka color decide karta hai uske current state ke hisab se
-  // weak = lal, strong = hara, unselected = grey
-  const getChipStyle = (topic) => {
+  // topic chip ka class decide karta hai uske current state ke hisab se
+  // weak = red pen, strong = green highlighter, unselected = plain
+  const getChipClass = (topic) => {
     const state = topicMap[topic];
-    if (state === "weak")
-      return "bg-red-100 text-red-700 border border-red-300 font-semibold";
-    if (state === "strong")
-      return "bg-emerald-100 text-emerald-700 border border-emerald-300 font-semibold";
-    return "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200";
+    if (state === "weak") return "chip is-weak";
+    if (state === "strong") return "chip is-strong";
+    return "chip";
+  };
+
+  const chipMark = (topic) => {
+    if (topicMap[topic] === "weak") return <span className="mark">✗</span>;
+    if (topicMap[topic] === "strong") return <span className="mark">✓</span>;
+    return null;
   };
 
   // selected weak aur strong topics ki count — summary me dikhate hain
   const weakCount = getWeakTopics().length;
   const strongCount = getStrongTopics().length;
 
+  const checklistTag = (state) =>
+    state === "done" ? "chip is-strong" : state === "in-progress" ? "chip is-progress" : "chip";
+
   return (
     <PageShell
-      title="AI Roadmap Generator"
-      subtitle="Generate a personalized study plan and save it to your tracker."
+      title={<>Plan the <span className="hl">grind</span>.</>}
+      subtitle="Mark what you're weak and strong at, tell us how much time you've got, and get a week-by-week roadmap."
       activeTab="roadmap"
+      note="be honest about the weak ones"
       actions={
-        <button
-          type="button"
-          onClick={() => navigate("/dashboard")}
-          className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-        >
-          Dashboard
+        <button type="button" onClick={() => navigate("/progress")} className="btn">
+          My progress
         </button>
       }
     >
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="space-y-8">
+        {error && <Notice tone="error">{error}</Notice>}
+        {message && <Notice tone="ok">{message}</Notice>}
 
-
-        <p className="mb-6 text-slate-600 text-white">
-           Select Topics then Generate a Personalized Roadmap 
-        </p>
-
-        {error && <p className="mb-3 rounded bg-red-50 p-3 text-red-700">{error}</p>}
-        {message && <p className="mb-3 rounded bg-emerald-50 p-3 text-emerald-700">{message}</p>}
-
-        {/* ── TOPIC SELECTOR SECTION ── */}
-        {/* ye section form ke upar dikhta hai — user yahan apne weak/strong topics mark karta hai */}
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-
-          {/* legend + clear button */}
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Select Topics</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                1 click = Weak  &nbsp;|&nbsp; 2 clicks = Strong  &nbsp;|&nbsp; 3 clicks = Unselect
-              </p>
+        <div className="grid gap-8 lg:grid-cols-[1.35fr_1fr]">
+          {/* ── TOPIC SELECTOR ── */}
+          <section className="sheet sheet-pad">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="section-title !mb-1"><span className="mono">01</span> Mark your topics</h2>
+                <p className="mono text-xs muted">
+                  tap once = <span className="text-[color:var(--red)]">weak</span> · twice = <span className="text-[color:var(--green)]">strong</span> · thrice = clear
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {(weakCount > 0 || strongCount > 0) && (
+                  <span className="mono text-xs">
+                    {weakCount > 0 && <span className="text-[color:var(--red)]">{weakCount} weak</span>}
+                    {weakCount > 0 && strongCount > 0 && " · "}
+                    {strongCount > 0 && <span className="text-[color:var(--green)]">{strongCount} strong</span>}
+                  </span>
+                )}
+                <button type="button" onClick={clearAllTopics} className="btn btn-sm">
+                  Clear
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              {/* selected topics ka quick summary */}
-              {(weakCount > 0 || strongCount > 0) && (
-                <span className="text-xs text-slate-500">
-                  {weakCount > 0 && <span className="text-red-600 font-medium">{weakCount} weak</span>}
-                  {weakCount > 0 && strongCount > 0 && " · "}
-                  {strongCount > 0 && <span className="text-emerald-600 font-medium">{strongCount} strong</span>}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={clearAllTopics}
-                className="rounded-md border border-slate-200 px-3 py-1 text-xs text-slate-500 hover:bg-slate-50"
-              >
-                Clear All
-              </button>
-            </div>
-          </div>
 
-          {/* DSA topics group */}
-          <div className="mb-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              DSA Topics
-            </p>
-            <div className="flex flex-wrap gap-2">
+            <p className="field-label">DSA</p>
+            <div className="mb-6 flex flex-wrap gap-2">
               {DSA_TOPICS.map((topic) => (
-                <button
-                  key={topic}
-                  type="button"
-                  onClick={() => handleTopicClick(topic)}
-                  className={`rounded-full px-3 py-1 text-xs transition-all cursor-pointer ${getChipStyle(topic)}`}
-                >
+                <button key={topic} type="button" onClick={() => handleTopicClick(topic)} className={getChipClass(topic)}>
                   {topic}
-                  {/* agar topic selected hai to uska label bhi chip pe dikhao */}
-                  {topicMap[topic] === "weak" && " ✗"}
-                  {topicMap[topic] === "strong" && " ✓"}
+                  {chipMark(topic)}
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Core CS topics group */}
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Core CS Concepts
-            </p>
+            <p className="field-label">Core CS</p>
             <div className="flex flex-wrap gap-2">
               {CORE_TOPICS.map((topic) => (
-                <button
-                  key={topic}
-                  type="button"
-                  onClick={() => handleTopicClick(topic)}
-                  className={`rounded-full px-3 py-1 text-xs transition-all cursor-pointer ${getChipStyle(topic)}`}
-                >
+                <button key={topic} type="button" onClick={() => handleTopicClick(topic)} className={getChipClass(topic)}>
                   {topic}
-                  {topicMap[topic] === "weak" && " ✗"}
-                  {topicMap[topic] === "strong" && " ✓"}
+                  {chipMark(topic)}
                 </button>
               ))}
             </div>
-          </div>
+          </section>
+
+          {/* ── ROADMAP FORM ── */}
+          <form onSubmit={generate} className="sheet taped sheet-pad space-y-5 lg:self-start">
+            <h2 className="section-title !mb-2"><span className="mono">02</span> The details</h2>
+
+            <div>
+              <label htmlFor="rm-company" className="field-label">Target company</label>
+              <select
+                id="rm-company"
+                value={form.companySlug}
+                onChange={(e) => setForm({ ...form, companySlug: e.target.value })}
+                className="field"
+              >
+                <option value="">General (no specific company)</option>
+                {companies.map((c) => (
+                  <option key={c._id} value={c.slug}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="rm-role" className="field-label">Role</label>
+              <input
+                id="rm-role"
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
+                placeholder="SDE Intern"
+                className="field"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="rm-weeks" className="field-label">Weeks</label>
+                <input
+                  id="rm-weeks"
+                  type="number"
+                  min={2}
+                  max={24}
+                  value={form.weeks}
+                  onChange={(e) => setForm({ ...form, weeks: e.target.value })}
+                  className="field"
+                />
+              </div>
+              <div>
+                <label htmlFor="rm-hours" className="field-label">Hours / day</label>
+                <input
+                  id="rm-hours"
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={form.hoursPerDay}
+                  onChange={(e) => setForm({ ...form, hoursPerDay: e.target.value })}
+                  className="field"
+                />
+              </div>
+            </div>
+
+            {(weakCount > 0 || strongCount > 0) && (
+              <div className="postit text-sm">
+                {weakCount > 0 && (
+                  <p><b>Weak:</b> {getWeakTopics().join(", ")}</p>
+                )}
+                {strongCount > 0 && (
+                  <p className="mt-1"><b>Strong:</b> {getStrongTopics().join(", ")}</p>
+                )}
+              </div>
+            )}
+
+            <button type="submit" disabled={loading} className="btn btn-ink btn-block">
+              {loading ? "Drafting your plan…" : <>Generate roadmap <span className="arrow">→</span></>}
+            </button>
+          </form>
         </div>
 
-        {/* ── ROADMAP FORM ── */}
-        {/* basic config: company, role, weeks, hours */}
-        <form
-          onSubmit={generate}
-          className="mb-8 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2"
-        >
-          {/* company dropdown — backend se fetch kiya hua data */}
-          <select
-            value={form.companySlug}
-            onChange={(e) => setForm({ ...form, companySlug: e.target.value })}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
-          >
-            <option value="">General (No Specific Company)</option>
-            {companies.map((c) => (
-              <option key={c._id} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-
-          <input
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-            placeholder="Role (e.g. SDE Intern)"
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
-          />
-
-          <input
-            type="number"
-            min={2}
-            max={24}
-            value={form.weeks}
-            onChange={(e) => setForm({ ...form, weeks: e.target.value })}
-            placeholder="Weeks"
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
-          />
-
-          <input
-            type="number"
-            min={1}
-            max={12}
-            value={form.hoursPerDay}
-            onChange={(e) => setForm({ ...form, hoursPerDay: e.target.value })}
-            placeholder="Hours/day"
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
-          />
-
-          {/* selected topics ka preview — form ke andar confirm karne ke liye */}
-          {(weakCount > 0 || strongCount > 0) && (
-            <div className="md:col-span-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">
-              {weakCount > 0 && (
-                <p>
-                  <span className="font-medium text-red-600">Weak:</span>{" "}
-                  {getWeakTopics().join(", ")}
-                </p>
-              )}
-              {strongCount > 0 && (
-                <p className="mt-0.5">
-                  <span className="font-medium text-emerald-600">Strong:</span>{" "}
-                  {getStrongTopics().join(", ")}
-                </p>
-              )}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-white hover:bg-slate-800 disabled:opacity-60 md:col-span-2"
-          >
-            {loading ? "Generating..." : "Generate Roadmap"}
-          </button>
-        </form>
+        {loading && <Loader label="Drafting your plan, week by week" />}
 
         {/* ── ROADMAP OUTPUT ── */}
-        {/* roadmap generate hone ke baad yahan weekly plan aur checklist dikhata hai */}
         {roadmap && (
-          <div className="space-y-4">
-
-            {/* roadmap meta info — source, company, role */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-sm text-slate-700">
-                Source:{" "}
-                <span
-                  className={`font-semibold ${
-                    roadmap.source === "gemini"
-                      ? "text-emerald-600"
-                      : "text-amber-600"
-                  }`}
-                >
-                  {roadmap.source === "gemini" ? "AI Generated ✓" : "Fallback (Template)"}
-                </span>{" "}
-                | Company:{" "}
-                <span className="font-semibold">{roadmap.meta.company}</span> | Role:{" "}
-                <span className="font-semibold">{roadmap.meta.role}</span>
-              </p>
+          <section className="space-y-8 border-t-[1.5px] border-dashed border-[color:var(--ink)] pt-10">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <span className="kicker"><b>§</b> your roadmap</span>
+                <h2 className="mt-2 text-4xl font-extrabold tracking-tight">
+                  {roadmap.meta.company} <span className="serif italic">· {roadmap.meta.role}</span>
+                </h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={roadmap.source === "gemini" ? "stamp stamp-green" : "stamp stamp-blue"}>
+                  {roadmap.source === "gemini" ? "AI drafted" : "Template"}
+                </span>
+                <button onClick={saveToTracker} disabled={saving} className="btn btn-hi">
+                  {saving ? "Saving…" : "Save to tracker"}
+                </button>
+              </div>
             </div>
 
             {/* checklist — 3-state toggle: todo → in-progress → done */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="mb-3 text-lg font-semibold text-slate-900">
-                Topic Checklist
-              </h2>
+            <div className="sheet sheet-pad">
+              <p className="field-label">Topic checklist · tap to cycle</p>
               <div className="flex flex-wrap gap-2">
                 {roadmap.checklist.map((item) => (
                   <button
                     key={item.topic}
                     type="button"
                     onClick={() => cycleState(item.topic)}
-                    className={
-                      "rounded-full px-3 py-1 text-xs font-medium transition-all " +
-                      (item.state === "done"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : item.state === "in-progress"
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-slate-100 text-slate-700")
-                    }
+                    className={checklistTag(item.state)}
                   >
-                    {item.topic} ({item.state})
+                    {item.topic}
+                    <span className="mark">{item.state === "done" ? "✓" : item.state === "in-progress" ? "…" : "○"}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* weekly plan cards — har week ka focus aur tasks */}
-            {roadmap.weeklyPlan.map((w) => (
-              <div
-                key={w.week}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-              >
-                <h3 className="mb-2 text-lg font-semibold text-slate-900">
-                  Week {w.week}
-                </h3>
-                <p className="mb-2 text-sm text-slate-700">
-                  Focus: <span className="font-medium">{w.focus.join(" + ")}</span>
-                </p>
-                <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
-                  {w.tasks.map((t, i) => (
-                    <li key={i}>{t}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            {/* weekly plan cards */}
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {roadmap.weeklyPlan.map((w, i) => (
+                <article key={w.week} className="sheet sheet-pad rise" style={{ "--i": i % 9 }}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="text-2xl font-extrabold">Week <span className="circled">{w.week}</span></h3>
+                  </div>
+                  <p className="mt-3 text-sm">
+                    <span className="hl font-semibold">{w.focus.join(" + ")}</span>
+                  </p>
+                  <ul className="mt-4 list-none space-y-2 p-0 text-sm">
+                    {w.tasks.map((t, ti) => (
+                      <li key={ti} className="flex gap-2">
+                        <span className="text-[color:var(--red)]">—</span>
+                        <span>{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
 
-            {/* tracker me save karne ka button */}
-            <button
-              onClick={saveToTracker}
-              disabled={saving}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 disabled:opacity-60"
-            >
-              {saving ? "Saving..." : "Save Roadmap to Tracker"}
-            </button>
-          </div>
+            <div className="flex justify-end">
+              <button onClick={saveToTracker} disabled={saving} className="btn btn-hi">
+                {saving ? "Saving…" : "Save roadmap to tracker"}
+              </button>
+            </div>
+          </section>
         )}
       </div>
     </PageShell>

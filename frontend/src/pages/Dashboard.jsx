@@ -3,7 +3,60 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import PageShell from "../components/PageShell";
 import CompanyLabel from "../components/CompanyLabel";
-import { useAuth } from "../context/useAuth";
+import { Empty, Loader, Notice } from "../components/Bits";
+
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "thisYear", label: "This year" },
+  { id: "lastYear", label: "Last year" },
+  { id: "predicted", label: "Likely upcoming" },
+];
+
+const QUICK = [
+  { no: "A", title: "Browse companies", body: "Every company that's visited, with round-by-round notes.", to: "/companies" },
+  { no: "B", title: "Build a roadmap", body: "Pick weak topics, get a week-by-week plan.", to: "/roadmap" },
+  { no: "C", title: "Check progress", body: "Your checklist, streak and readiness meter.", to: "/progress" },
+];
+
+// Ek company ka chhota card — click karne par company page ya experiences list khulti hai
+function DeskCompanyCard({ company, onOpen, rank, index = 0 }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(company)}
+      className="sheet lift rise relative flex w-full flex-col p-5 text-left"
+      style={{ "--i": index }}
+    >
+      {rank && <span className="stamp absolute -top-3 right-4 bg-[color:var(--sheet)]">#{rank}</span>}
+      <CompanyLabel company={company} size="md" />
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-dashed border-[color:var(--ink-3)] pt-3">
+        <span className="mono text-xs muted">
+          {company.lastVisitDate ? `last seen ${company.lastVisitDate}` : `${company.count} experience${company.count === 1 ? "" : "s"}`}
+        </span>
+        <span className="tag tag-hi">{company.count}×</span>
+      </div>
+    </button>
+  );
+}
+
+function CompanyGrid({ companies, onOpen, ranked = false, emptyText }) {
+  if (companies.length === 0) {
+    return <Empty title="Nothing here yet.">{emptyText}</Empty>;
+  }
+  return (
+    <div className="grid grid-cols-1 gap-6 pt-3 md:grid-cols-2 lg:grid-cols-3">
+      {companies.map((company, idx) => (
+        <DeskCompanyCard
+          key={company.name}
+          company={company}
+          onOpen={onOpen}
+          rank={ranked ? idx + 1 : undefined}
+          index={idx % 9}
+        />
+      ))}
+    </div>
+  );
+}
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -23,13 +76,7 @@ function Dashboard() {
     predictedUpcoming: [],
   });
 
-  const { logout } = useAuth();
   const navigate = useNavigate();
-
-  const handleSignOut = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
 
   // Fetch all experiences on mount
   useEffect(() => {
@@ -43,7 +90,7 @@ function Dashboard() {
         const uniqueCompanies = new Set(
           allExperiences.map((e) => e.company?.name)
         ).size;
-        const offers = allExperiences.filter((e) => e.offer).length;
+        const offers = allExperiences.filter((e) => e.gotOffer || e.offer).length;
 
         setStats({
           totalExperiences: allExperiences.length,
@@ -72,9 +119,9 @@ function Dashboard() {
             if (!grouped[name]) {
               grouped[name] = {
                 name,
-                logo: exp.company?.logo || "📊",
+                slug: exp.company?.slug || "",
+                logo: exp.company?.logo || "",
                 count: 0,
-                lastRound: exp.round || "Unknown",
                 exps: [],
               };
             }
@@ -86,12 +133,13 @@ function Dashboard() {
 
         // Upcoming companies (most likely) - based on last year visits, with dates
         const lastYearGrouped = groupByCompany(lastYearExps);
-        // Add lastVisitDate to each company
         const upcomingCompanies = lastYearGrouped.map((company) => {
           const lastExp = company.exps.sort(
             (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
           )[0];
-          const dateStr = lastExp?.createdAt ? new Date(lastExp.createdAt).toLocaleDateString() : "Date Unknown";
+          const dateStr = lastExp?.createdAt
+            ? new Date(lastExp.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+            : "date unknown";
           return {
             ...company,
             lastVisitDate: dateStr,
@@ -119,479 +167,198 @@ function Dashboard() {
     loadData();
   }, []);
 
+  // company slug ho to company page par jao, warna yahin experiences dikhao
+  const openCompany = (company) => {
+    if (company.slug) return navigate(`/companies/${company.slug}`);
+    return setSelectedCompany(company);
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
-        <p className="text-white text-xl">Loading dashboard...</p>
-      </div>
+      <PageShell title="Your desk" activeTab="dashboard">
+        <Loader label="Spreading out the notes" />
+      </PageShell>
     );
   }
 
-  // Company card component
-  const CompanyCard = ({ company, onClick, isClickable = true }) => (
-    <div
-      onClick={() => {
-        if (!isClickable) return;
-        if (company.slug) return navigate(`/companies/${company.slug}`);
-        return onClick && onClick(company);
-      }}
-      className={`rounded-lg border border-slate-300 bg-white p-4 shadow-md transition-all hover:shadow-lg ${
-        isClickable ? "cursor-pointer hover:border-blue-400 hover:scale-105" : ""
-      }`}
-    >
-      <div className="mb-3 flex items-center justify-between">
-          <CompanyLabel company={company} size="md" />
-        <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-          {company.count} times
-        </span>
-      </div>
-      <p className="text-xs text-slate-500">Last: {company.lastRound}</p>
-    </div>
-  );
-
-  // Experience details modal
+  // Experience list for a company without its own page
   if (selectedCompany) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-6">
-        <div className="max-w-4xl mx-auto">
-          <button
-            onClick={() => setSelectedCompany(null)}
-            className="mb-6 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition-all"
-          >
-            ← Back to Dashboard
+      <PageShell
+        title={selectedCompany.name}
+        subtitle={`${selectedCompany.count} recorded experience${selectedCompany.count === 1 ? "" : "s"}.`}
+        activeTab="dashboard"
+        actions={
+          <button type="button" onClick={() => setSelectedCompany(null)} className="btn">
+            ← Back to desk
           </button>
-
-          <div className="bg-white rounded-xl shadow-xl p-8">
-            <div className="flex items-center gap-4 mb-8">
-              <div>
-                <CompanyLabel company={selectedCompany} size="lg" />
-                <p className="text-slate-600">
-                  {selectedCompany.count} recorded experiences
-                </p>
+        }
+      >
+        <div className="space-y-5">
+          {selectedCompany.exps.map((exp, idx) => (
+            <article key={exp._id || idx} className="sheet sheet-pad rise" style={{ "--i": idx % 8 }}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-extrabold">{exp.role || "Role not specified"}</h3>
+                  <p className="mono mt-1 text-xs muted">
+                    {exp.year ? `year ${exp.year} · ` : ""}
+                    {Array.isArray(exp.rounds) ? `${exp.rounds.length} rounds · ` : ""}
+                    {new Date(exp.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                {(exp.gotOffer || exp.offer) && <span className="stamp stamp-green">Offer</span>}
               </div>
-            </div>
-
-            <div className="border-t border-slate-200 pt-6">
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">
-                Past Experiences
-              </h2>
-
-              <div className="space-y-4">
-                {selectedCompany.exps.map((exp, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-lg border border-slate-200 bg-slate-50 p-5 hover:bg-slate-100 transition-all"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-lg">
-                          {exp.role || "Role Not Specified"}
-                        </h3>
-                        <p className="text-sm text-slate-600">
-                          {exp.round || "Round Unknown"} •{" "}
-                          {new Date(exp.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      {exp.offer && (
-                        <span className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                          ✓ Offer
-                        </span>
-                      )}
-                    </div>
-
-                    {exp.description && (
-                      <p className="text-slate-700 mb-3">{exp.description}</p>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-3 text-sm text-slate-600">
-                      {exp.duration && (
-                        <p>
-                          <span className="font-semibold">Duration:</span>{" "}
-                          {exp.duration}
-                        </p>
-                      )}
-                      {exp.salary && (
-                        <p>
-                          <span className="font-semibold">Salary:</span>{" "}
-                          {exp.salary}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {exp.ctc && <span className="tag tag-hi">₹ {exp.ctc}</span>}
+                {exp.prepTime && <span className="tag">prep · {exp.prepTime}</span>}
               </div>
-            </div>
-          </div>
+              {exp.tips && <p className="mt-4 muted">{exp.tips}</p>}
+            </article>
+          ))}
         </div>
-      </div>
+      </PageShell>
     );
   }
+
+  const maxYear = Math.max(data.thisYear.length, data.lastYear.length, 1);
 
   // Main dashboard
   return (
     <PageShell
-      title="Dashboard"
-      subtitle="Quick access to companies, progress, roadmaps, and your weekly study plan."
+      title="Your desk"
+      subtitle="Placement season at a glance — who's coming, what's been asked, and where to go next."
       activeTab="dashboard"
+      note="start with the companies likely to come back ↓"
       actions={
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-        >
-          Sign Out
+        <button type="button" onClick={() => navigate("/roadmap")} className="btn btn-hi">
+          Build a roadmap <span className="arrow">→</span>
         </button>
       }
     >
-      <div className="space-y-10">
-        <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="dashboard-brand mb-2"><span>c</span>rackd<span className="brand-dot">.</span></div>
-            <p className="text-slate-300 max-w-2xl">
-              A polished prep dashboard built for placements. Navigate between companies, progress, experiences, and AI roadmap tools.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => navigate("/companies")}
-              className="rounded-full border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Companies
-            </button>
-            <button
-              onClick={() => navigate("/progress")}
-              className="rounded-full border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Progress
-            </button>
-          </div>
-        </div>
-          {/* Header */}
-        {/* Stats Cards */}
-        {activeTab === "overview" && (
-          <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-fade-up">
-            <div className="dashboard-stat-card relative rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 p-8 text-white shadow-2xl overflow-hidden group hover-lift">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16"></div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-blue-100 text-sm font-semibold uppercase tracking-wider">Total Experiences</p>
-                  <span className="text-3xl">📊</span>
-                </div>
-                <p className="dashboard-stat-value text-5xl font-black mb-2">{stats.totalExperiences}</p>
-                <p className="text-blue-200 text-sm">Interview rounds completed</p>
-                <div className="mt-4 pt-4 border-t border-white/20 text-xs text-blue-100">Keep grinding! 💪</div>
-              </div>
-            </div>
+      {error && <div className="mb-6"><Notice tone="error">{error}</Notice></div>}
 
-            <div className="dashboard-stat-card relative rounded-2xl bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 p-8 text-white shadow-2xl overflow-hidden group hover-lift">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16"></div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-purple-100 text-sm font-semibold uppercase tracking-wider">Companies Visited</p>
-                  <span className="text-3xl">🏢</span>
-                </div>
-                <p className="dashboard-stat-value text-5xl font-black mb-2">{stats.companiesVisited}</p>
-                <p className="text-purple-200 text-sm">Unique companies this year</p>
-                <div className="mt-4 pt-4 border-t border-white/20 text-xs text-purple-100">Diversify your prep! 🎯</div>
-              </div>
-            </div>
-
-            <div className="dashboard-stat-card relative rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 p-8 text-white shadow-2xl overflow-hidden group hover-lift">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16"></div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-emerald-100 text-sm font-semibold uppercase tracking-wider">Success Rate</p>
-                  <span className="text-3xl">📈</span>
-                </div>
-                <p className="dashboard-stat-value text-5xl font-black mb-2">{stats.totalExperiences > 0 ? Math.round((stats.companiesVisited / stats.totalExperiences) * 100) : 0}%</p>
-                <p className="text-emerald-200 text-sm">Company diversity ratio</p>
-                <div className="mt-4 pt-4 border-t border-white/20 text-xs text-emerald-100">You're doing great! ⭐</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions Section */}
-          <div className="mb-10 animate-fadeInUp" style={{animationDelay: '0.1s'}}>
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-              <span className="text-3xl">⭐</span> Quick Actions & Insights
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <div onClick={() => navigate('/companies')} className="relative rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 p-6 cursor-pointer group hover:border-cyan-500/80 hover:from-cyan-500/30 hover:to-blue-500/30 transition-all duration-300 hover:-translate-y-1 transform">
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-white/0 to-cyan-500/0 group-hover:from-cyan-500/10 group-hover:via-white/10 group-hover:to-cyan-500/10 rounded-xl transition-all duration-300"></div>
-                <div className="relative z-10">
-                  <p className="text-4xl mb-3">📚</p>
-                  <h3 className="font-bold text-white text-lg mb-2">Browse Companies</h3>
-                  <p className="text-sm text-slate-300">Explore all companies visiting campus</p>
-                </div>
-              </div>
-
-              <div onClick={() => navigate('/progress')} className="relative rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/40 p-6 cursor-pointer group hover:border-purple-500/80 hover:from-purple-500/30 hover:to-pink-500/30 transition-all duration-300 hover:-translate-y-1 transform">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 via-white/0 to-purple-500/0 group-hover:from-purple-500/10 group-hover:via-white/10 group-hover:to-purple-500/10 rounded-xl transition-all duration-300"></div>
-                <div className="relative z-10">
-                  <p className="text-4xl mb-3">📈</p>
-                  <h3 className="font-bold text-white text-lg mb-2">Track Progress</h3>
-                  <p className="text-sm text-slate-300">Monitor your preparation status</p>
-                </div>
-              </div>
-
-              <div onClick={() => navigate('/roadmap')} className="relative rounded-xl bg-gradient-to-br from-green-500/20 to-teal-500/20 border border-green-500/40 p-6 cursor-pointer group hover:border-green-500/80 hover:from-green-500/30 hover:to-teal-500/30 transition-all duration-300 hover:-translate-y-1 transform">
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500/0 via-white/0 to-green-500/0 group-hover:from-green-500/10 group-hover:via-white/10 group-hover:to-green-500/10 rounded-xl transition-all duration-300"></div>
-                <div className="relative z-10">
-                  <p className="text-4xl mb-3">🗺️</p>
-                  <h3 className="font-bold text-white text-lg mb-2">Roadmap</h3>
-                  <p className="text-sm text-slate-300">Generate AI-powered roadmaps</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Top Companies Section */}
-          {data.predictedUpcoming.length > 0 && (
-            <div className="mb-10 animate-fadeInUp" style={{animationDelay: '0.2s'}}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <span className="text-3xl">🔥</span> Most Likely Upcoming Companies
-                </h2>
-                <button onClick={() => setActiveTab('predicted')} className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-all">View All →</button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {data.predictedUpcoming.slice(0, 3).map((company, idx) => (
-                  <div key={idx} onClick={() => company.slug ? navigate(`/companies/${company.slug}`) : setSelectedCompany(company)} className="relative rounded-xl border-2 border-amber-400 bg-gradient-to-br from-slate-800 to-slate-900 p-6 cursor-pointer group hover:shadow-2xl hover:border-amber-300 transition-all duration-300 overflow-hidden hover-lift">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                    <div className="absolute -top-3 -right-3 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 w-12 h-12 flex items-center justify-center text-white font-bold text-lg shadow-lg">#{idx + 1}</div>
-                        <div className="relative z-10">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center text-base bg-white/10 text-white shadow-sm">{company.logo}</div>
-                              <h3 className="font-bold text-white text-xl mb-0">{company.name}</h3>
-                            </div>
-                            <span className="inline-block rounded-full bg-amber-400/20 border border-amber-400 text-amber-300 px-3 py-1 text-xs font-bold">{company.count}x</span>
-                          </div>
-                      <p className="text-xs text-slate-400 mb-4">Last visited: <span className="text-amber-300 font-semibold">{company.lastVisitDate}</span></p>
-                      <div className="pt-4 border-t border-slate-700">
-                        <p className="text-xs text-slate-300">Prepare for this company next! 🎯</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Stats & Tips Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10 animate-fadeInUp" style={{animationDelay: '0.3s'}}>
-            <div className="activity-panel rounded-xl p-6">
-              <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><span>📊</span> Year-wise Activity</h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="activity-label text-sm font-semibold">This Year</span>
-                    <span className="activity-value activity-value-blue text-lg font-bold">{data.thisYear.length}</span>
-                  </div>
-                  <div className="activity-track w-full rounded-full h-3 overflow-hidden">
-                    <div className="activity-fill activity-fill-blue h-full rounded-full transition-all duration-500" style={{width: `${Math.min((data.thisYear.length / Math.max(data.thisYear.length, data.lastYear.length, 1)) * 100, 100)}%`}}></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="activity-label text-sm font-semibold">Last Year</span>
-                    <span className="activity-value activity-value-violet text-lg font-bold">{data.lastYear.length}</span>
-                  </div>
-                  <div className="activity-track w-full rounded-full h-3 overflow-hidden">
-                    <div className="activity-fill activity-fill-violet h-full rounded-full transition-all duration-500" style={{width: `${Math.min((data.lastYear.length / Math.max(data.thisYear.length, data.lastYear.length, 1)) * 100, 100)}%`}}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="tips-panel rounded-xl p-6">
-              <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><span>💡</span> Pro Tips</h3>
-              <div className="space-y-3">
-                <div className="tip-row tip-row-blue flex gap-3 p-3 rounded-lg">
-                  <span>✨</span>
-                  <p className="text-sm">Generate AI-powered roadmaps for each company</p>
-                </div>
-                <div className="tip-row tip-row-violet flex gap-3 p-3 rounded-lg">
-                  <span>📝</span>
-                  <p className="text-sm">Track your progress with daily streaks</p>
-                </div>
-                <div className="tip-row tip-row-green flex gap-3 p-3 rounded-lg">
-                  <span>🎯</span>
-                  <p className="text-sm">Focus on weak topics before interviews</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Main CTA Section */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-10 text-center shadow-2xl mb-10 animate-fadeInUp" style={{animationDelay: '0.4s'}}>
-            <h2 className="text-3xl font-bold text-white mb-4">Ready to Start Your Preparation?</h2>
-            <p className="text-blue-100 mb-8 text-lg">Choose your next step and accelerate your placement journey.</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button onClick={() => navigate('/companies')} className="px-8 py-4 rounded-lg bg-white text-blue-600 font-bold hover:bg-blue-50 transition-all shadow-lg hover-lift">📚 Explore Companies</button>
-              <button onClick={() => navigate('/roadmap')} className="px-8 py-4 rounded-lg bg-blue-700 text-white font-bold hover:bg-blue-800 transition-all shadow-lg hover-lift border border-white/20">🗺️ Generate Roadmap</button>
-            </div>
-          </div>
-          </>
-        )}
-
-        {error && (
-          <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/50 p-4 text-red-300">
-            {error}
-          </div>
-        )}
-
-        {/* Tabs */}
-        <div className="mb-8 flex gap-3 border-b border-slate-700 overflow-x-auto pb-4">
-          {[
-            { id: "overview", label: "📊 Overview" },
-            { id: "thisYear", label: "🎯 This Year" },
-            { id: "lastYear", label: "📅 Last Year" },
-            { id: "predicted", label: "🔥 Upcoming (Most Likely)" },
-          ].map((tab) => (
+      <div className="folder-tabs mb-10" role="tablist">
+        {TABS.map((tab) => {
+          const count =
+            tab.id === "thisYear" ? data.thisYear.length
+            : tab.id === "lastYear" ? data.lastYear.length
+            : tab.id === "predicted" ? data.predictedUpcoming.length
+            : null;
+          return (
             <button
               key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap px-5 py-3 font-semibold rounded-lg transition-all ${
-                activeTab === tab.id
-                  ? "bg-blue-600 text-white shadow-lg"
-                  : "text-slate-300 hover:text-white hover:bg-slate-700"
-              }`}
+              className={`folder-tab ${activeTab === tab.id ? "is-active" : ""}`}
             >
               {tab.label}
+              {count !== null && <small>{count}</small>}
             </button>
-          ))}
-        </div>
-
-        {/* Tab Content */}
-        <div>
-          {/* This Year Tab */}
-          {activeTab === "thisYear" && (
-            <div>
-              {data.thisYear.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {data.thisYear.map((company) => (
-                    <CompanyCard
-                      key={company.name}
-                      company={company}
-                      onClick={setSelectedCompany}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-slate-400 py-12">
-                  No experiences recorded this year yet
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Last Year Tab */}
-          {activeTab === "lastYear" && (
-            <div>
-              {data.lastYear.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {data.lastYear.map((company) => (
-                    <CompanyCard
-                      key={company.name}
-                      company={company}
-                      onClick={setSelectedCompany}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-slate-400 py-12">
-                  No experiences recorded last year
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Upcoming Companies Tab */}
-          {activeTab === "predicted" && (
-            <div>
-              <div className="mb-6 rounded-lg bg-amber-500/10 border border-amber-500/30 p-4">
-                <p className="text-amber-300 text-sm">
-                  📈 Companies from last year, ranked by recent activity. Likely to visit again soon.
-                </p>
-              </div>
-
-              {data.predictedUpcoming.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {data.predictedUpcoming.map((company, idx) => (
-                    <div
-                      key={idx}
-                      className="relative rounded-lg border-2 border-amber-400 bg-white p-4 shadow-lg hover:shadow-xl transition-all"
-                    >
-                      <div className="absolute -top-3 -right-3 rounded-full bg-amber-400 w-8 h-8 flex items-center justify-center text-white font-bold text-sm">
-                        #{idx + 1}
-                      </div>
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="text-4xl">{company.logo}</div>
-                        <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                          {company.count}x visited
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-slate-900 text-lg mb-1">
-                        {company.name}
-                      </h3>
-                      <p className="text-xs text-slate-500 mb-3">
-                        Last visited: {company.lastVisitDate}
-                      </p>
-                      <button
-                        onClick={() => company.slug ? navigate(`/companies/${company.slug}`) : setSelectedCompany(company)}
-                        className="w-full rounded-lg bg-amber-400 text-slate-900 font-semibold py-2 hover:bg-amber-500 transition-all"
-                      >
-                        View Experiences →
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-slate-400 py-12">
-                  No companies from last year data yet
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Footer */}
-      <footer className="dashboard-footer p-6 mt-12">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <div>
-              <h3 className="font-bold mb-2">About Crackd</h3>
-              <p className="text-sm">
-                Where preparation meets opportunity. 
-                
-                Track your placement journey and prepare for companies with personalized roadmaps.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-bold mb-2">Quick Links</h3>
-              <ul className="space-y-1 text-sm">
-                <li><button onClick={() => navigate('/companies')} className="hover:text-blue-600 transition">Companies</button></li>
-                <li><button onClick={() => navigate('/progress')} className="hover:text-blue-600 transition">Progress</button></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-bold mb-2">Help & Support</h3>
-              <p className="text-sm">
-                Need help? Check the documentation or reach out to support.
-              </p>
-            </div>
+      {activeTab === "overview" && (
+        <div className="space-y-16">
+          {/* Stats */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {[
+              { label: "Experiences logged", value: stats.totalExperiences, note: "stories from seniors" },
+              { label: "Companies on record", value: stats.companiesVisited, note: "different companies" },
+              { label: "Offers logged", value: stats.offersReceived, note: "people who made it" },
+            ].map((stat, i) => (
+              <div key={stat.label} className="sheet sheet-pad rise" style={{ "--i": i }}>
+                <p className="kicker">{stat.label}</p>
+                <p className="stat-num mt-4">{stat.value}</p>
+                <p className="hand mt-2 text-xl text-[color:var(--blue)]">{stat.note}</p>
+              </div>
+            ))}
           </div>
-          <div className="dashboard-footer-bottom pt-6 text-center text-sm">
-            <p>© 2026 Crackd. All rights reserved. Built for placement success.</p>
+
+          {/* Quick actions */}
+          <section>
+            <h2 className="section-title"><span className="mono">A–C</span> Where to next</h2>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {QUICK.map((item, i) => (
+                <button
+                  key={item.no}
+                  type="button"
+                  onClick={() => navigate(item.to)}
+                  className="sheet lift rise group p-6 text-left"
+                  style={{ "--i": i + 3 }}
+                >
+                  <span className="circled mono text-sm font-bold">{item.no}</span>
+                  <h3 className="mt-5 text-2xl font-extrabold">{item.title}</h3>
+                  <p className="mt-2 text-sm muted">{item.body}</p>
+                  <span className="mt-5 inline-block font-bold transition-transform group-hover:translate-x-1">Go →</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Upcoming */}
+          {data.predictedUpcoming.length > 0 && (
+            <section>
+              <div className="mb-1 flex flex-wrap items-baseline justify-between gap-3">
+                <h2 className="section-title"><span className="mono">hot</span> Likely to come back</h2>
+                <button type="button" onClick={() => setActiveTab("predicted")} className="link-ink text-sm">
+                  See all {data.predictedUpcoming.length}
+                </button>
+              </div>
+              <CompanyGrid companies={data.predictedUpcoming.slice(0, 3)} onOpen={openCompany} ranked />
+            </section>
+          )}
+
+          {/* Activity + tips */}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.3fr_1fr]">
+            <section className="sheet sheet-pad">
+              <h2 className="section-title"><span className="mono">log</span> Companies, year by year</h2>
+              {[
+                { label: "This year", value: data.thisYear.length, cls: "" },
+                { label: "Last year", value: data.lastYear.length, cls: "is-low" },
+              ].map((row) => (
+                <div key={row.label} className="mt-5">
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <span className="font-semibold">{row.label}</span>
+                    <span className="mono text-sm">{row.value}</span>
+                  </div>
+                  <div className="meter">
+                    <div className={`meter-fill ${row.cls}`} style={{ width: `${Math.min((row.value / maxYear) * 100, 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </section>
+
+            <aside className="postit self-start">
+              <p className="kicker">Margin notes</p>
+              <ul className="hand mt-3 space-y-2 text-2xl">
+                <li>→ make a roadmap per company</li>
+                <li>→ one topic a day beats ten on Sunday</li>
+                <li>→ weak topics first, always</li>
+              </ul>
+            </aside>
           </div>
         </div>
-      </footer>
+      )}
+
+      {activeTab === "thisYear" && (
+        <CompanyGrid companies={data.thisYear} onOpen={openCompany} emptyText="No experiences recorded this year yet." />
+      )}
+
+      {activeTab === "lastYear" && (
+        <CompanyGrid companies={data.lastYear} onOpen={openCompany} emptyText="No experiences recorded last year." />
+      )}
+
+      {activeTab === "predicted" && (
+        <div className="space-y-6">
+          <Notice tone="info">
+            Companies from last year, ranked by how recently they showed up. They're the most likely to visit again.
+          </Notice>
+          <CompanyGrid companies={data.predictedUpcoming} onOpen={openCompany} ranked emptyText="No companies from last year yet." />
+        </div>
+      )}
     </PageShell>
   );
 }

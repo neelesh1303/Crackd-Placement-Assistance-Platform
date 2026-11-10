@@ -2,40 +2,38 @@
 
 function RoundInput({ round, onChange, onRemove, index }) {
   return (
-    <div className="mb-6 rounded-xl border border-white/10 bg-[#1e2527] p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
-        <h4 className="text-sm font-bold text-teal-300 flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-500/20 text-xs text-teal-300">
-            {index + 1}
-          </span>
+    <div className="sheet sheet-flat mb-5 p-5">
+      <div className="mb-4 flex items-center justify-between border-b border-dashed border-[color:var(--ink-3)] pb-3">
+        <h4 className="flex items-center gap-3 text-lg font-extrabold">
+          <span className="circled mono text-sm">{String(index + 1).padStart(2, "0")}</span>
           Round {index + 1}
         </h4>
         <button
           type="button"
           onClick={onRemove}
-          className="text-xs font-semibold text-rose-400 hover:text-rose-300 transition"
+          className="mono text-xs font-bold text-[color:var(--red)] hover:underline"
         >
-          ✕ Remove Round
+          ✕ remove
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Round Number</label>
+          <label className="field-label">Round number</label>
           <input
             type="number"
-            placeholder="Round No"
+            placeholder="1"
             value={round.roundNo}
             onChange={(e) => onChange("roundNo", Number(e.target.value))}
-            className="rounded-lg border border-white/10 bg-[#161d1f] px-3 py-2 text-sm text-slate-200"
+            className="field"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Round Type</label>
+          <label className="field-label">Round type</label>
           <select
             value={round.type}
             onChange={(e) => onChange("type", e.target.value)}
-            className="rounded-lg border border-white/10 bg-[#161d1f] px-3 py-2 text-sm text-slate-200"
+            className="field"
           >
             <option value="OA">OA (Online Assessment)</option>
             <option value="DSA">DSA Round</option>
@@ -47,22 +45,22 @@ function RoundInput({ round, onChange, onRemove, index }) {
         </div>
       </div>
 
-      <div className="mt-3">
-        <label className="mb-1 block text-xs font-medium text-slate-400">Description / Experience Notes</label>
+      <div className="mt-4">
+        <label className="field-label">What happened in this round?</label>
         <textarea
-          placeholder="What was asked in this round? Format, difficulty, focus areas..."
+          placeholder="Format, difficulty, what they focused on, how it felt…"
           value={round.description}
           onChange={(e) => onChange("description", e.target.value)}
           rows={3}
-          className="w-full rounded-lg border border-white/10 bg-[#161d1f] px-3 py-2 text-sm text-slate-200"
+          className="field"
         />
       </div>
 
-      <div className="mt-3">
-        <label className="mb-1 block text-xs font-medium text-slate-400">Coding Problems Asked (comma-separated)</label>
+      <div className="mt-4">
+        <label className="field-label">Problems asked · comma separated</label>
         <input
           type="text"
-          placeholder="e.g. Merge Intervals, Two Sum, Course Schedule"
+          placeholder="Merge Intervals, Two Sum, Course Schedule"
           value={(round.problemsAsked || []).join(", ")}
           onChange={(e) =>
             onChange(
@@ -70,16 +68,16 @@ function RoundInput({ round, onChange, onRemove, index }) {
               e.target.value.split(",").map((p) => p.trim())
             )
           }
-          className="w-full rounded-lg border border-white/10 bg-[#161d1f] px-3 py-2 text-sm text-slate-200 font-mono"
+          className="field field-mono"
         />
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Topics Covered (comma-separated)</label>
+          <label className="field-label">Topics · comma separated</label>
           <input
             type="text"
-            placeholder="e.g. Arrays, Greedy, Dynamic Programming"
+            placeholder="Arrays, Greedy, DP"
             value={(round.topics || []).join(", ")}
             onChange={(e) =>
               onChange(
@@ -87,18 +85,18 @@ function RoundInput({ round, onChange, onRemove, index }) {
                 e.target.value.split(",").map((t) => t.trim())
               )
             }
-            className="w-full rounded-lg border border-white/10 bg-[#161d1f] px-3 py-2 text-sm text-slate-200"
+            className="field"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Round Duration</label>
+          <label className="field-label">Duration</label>
           <input
             type="text"
-            placeholder="e.g. 1 hour, 45 mins"
+            placeholder="45 mins"
             value={round.duration}
             onChange={(e) => onChange("duration", e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-[#161d1f] px-3 py-2 text-sm text-slate-200"
+            className="field"
           />
         </div>
       </div>

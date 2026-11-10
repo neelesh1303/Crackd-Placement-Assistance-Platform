@@ -1,17 +1,19 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import Logo from "./Logo";
+import { useAuth } from "../context/useAuth";
 
 const tabs = [
-  { id: "dashboard", label: "Dashboard", to: "/dashboard" },
+  { id: "dashboard", label: "Desk", to: "/dashboard" },
   { id: "companies", label: "Companies", to: "/companies" },
   { id: "roadmap", label: "Roadmap", to: "/roadmap" },
   { id: "progress", label: "Progress", to: "/progress" },
-  { id: "chat", label: "Assistant", to: "/chat" },
-  { id: "experience", label: "Add Experience", to: "/add-experience" },
+  { id: "chat", label: "Ask", to: "/chat" },
+  { id: "experience", label: "Share story", to: "/add-experience" },
 ];
 
 const getTabId = (pathname) => {
   if (pathname.startsWith("/companies")) return "companies";
-  if (pathname.startsWith("/roadmap-details")) return "roadmap";
+  if (pathname.startsWith("/roadmap-details")) return "progress";
   if (pathname.startsWith("/roadmap")) return "roadmap";
   if (pathname.startsWith("/progress")) return "progress";
   if (pathname.startsWith("/chat")) return "chat";
@@ -19,52 +21,75 @@ const getTabId = (pathname) => {
   return "dashboard";
 };
 
-function PageShell({ title, subtitle, activeTab, actions, children }) {
+const initialsOf = (name) =>
+  (name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("") || "Me";
+
+function PageShell({ title, subtitle, activeTab, actions, note, children }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
   const currentTab = activeTab || getTabId(location.pathname);
+  const sectionIndex = Math.max(tabs.findIndex((tab) => tab.id === currentTab), 0) + 1;
+
+  const handleSignOut = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
-    <div className="workspace-shell min-h-screen text-slate-100">
-      <div className="workspace-atmosphere" aria-hidden="true">
-        <span className="signal-line signal-line-one" />
-        <span className="signal-line signal-line-two" />
-        <span className="signal-node signal-node-one" />
-        <span className="signal-node signal-node-two" />
-      </div>
-      <div className="workspace-content mx-auto max-w-7xl px-4 py-8 lg:px-8 lg:py-12">
-        <header className="workspace-header mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="workspace-brand" aria-label="Crackd prep workspace">
-              <span className="workspace-brand-mark"><span>c</span>rackd<span className="workspace-brand-dot">.</span></span>
-              <span className="workspace-brand-divider" />
-              <span className="workspace-brand-label">prep workspace</span>
-            </div>
-            <h1 className="mt-5 text-4xl font-extrabold tracking-tight sm:text-5xl">{title}</h1>
-            {subtitle && <p className="workspace-subtitle mt-4 max-w-2xl">{subtitle}</p>}
+    <div className="min-h-screen">
+      <header className="topbar">
+        <div className="topbar-inner">
+          <Logo to="/dashboard" />
+          <nav className="nav" aria-label="Main navigation">
+            {tabs.map((tab, index) => (
+              <NavLink
+                key={tab.id}
+                to={tab.to}
+                className={`nav-link ${currentTab === tab.id ? "is-active" : ""}`}
+              >
+                <small>{String(index + 1).padStart(2, "0")}</small>
+                {tab.label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="topbar-user">
+            <span className="avatar-chip hidden sm:grid" title={user?.name || "You"}>
+              {initialsOf(user?.name)}
+            </span>
+            <button type="button" onClick={handleSignOut} className="btn btn-sm btn-ghost">
+              Sign out
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="page">
+        <div className="page-head rise">
+          {note && <p className="margin-note">{note}</p>}
+          <div className="min-w-0">
+            <span className="kicker">
+              <b>§{String(sectionIndex).padStart(2, "0")}</b> crackd / prep notebook
+            </span>
+            <h1 className="page-title">{title}</h1>
+            {subtitle && <p className="page-sub">{subtitle}</p>}
           </div>
           {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}
-        </header>
+        </div>
 
-        <nav className="workspace-tabs mb-10 flex flex-wrap gap-2 border-b pb-4" aria-label="Main navigation">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => navigate(tab.to)}
-              className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                currentTab === tab.id
-                  ? "workspace-tab-active shadow-lg"
-                  : "text-slate-500 hover:bg-white/10 hover:text-slate-100"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-
-        <main className="workspace-main">{children}</main>
+        <main>{children}</main>
       </div>
+
+      <footer className="colophon">
+        <span>crackd — written in pencil, revised in pen.</span>
+        <span>made by students who also panicked before their first OA</span>
+      </footer>
     </div>
   );
 }

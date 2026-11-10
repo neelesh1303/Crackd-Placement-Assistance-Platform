@@ -38,46 +38,52 @@ const getGfgTopicLink = (topic) => {
   return `https://www.google.com/search?q=${encodeURIComponent(`site:geeksforgeeks.org ${topic}`)}`;
 };
 
+// 3 states: todo → in-progress → done
+const states = ["todo", "in-progress", "done"];
+
+const stateLabels = {
+  todo: "to do",
+  "in-progress": "on it",
+  done: "done",
+};
+
+const stateTags = {
+  todo: "tag tag-ghost",
+  "in-progress": "tag tag-hi",
+  done: "tag tag-green",
+};
+
 const ChecklistItem = ({ item, index, onStateChange }) => {
-  // 3 states: todo → in-progress → done
-  const states = ["todo", "in-progress", "done"];
-  const colors = {
-    todo: "bg-gray-200 text-gray-800",
-    "in-progress": "bg-blue-200 text-blue-800",
-    done: "bg-green-200 text-green-800",
-  };
-
-  const stateLabels = {
-    todo: "📌 Todo",
-    "in-progress": "⚡ In Progress",
-    done: "✅ Done",
-  };
-
-  const handleCycle = () => { // ye function checklist item ke state ko cycle karne ke liye hai. jab user button par click karta hai, to ye function current state ko identify karta hai, aur uske next state ko calculate karke onStateChange callback function ko call karta hai. states array me "todo", "in-progress", aur "done" ke order me states define kiye gaye hain, aur current state ke index ko find karke next state ko determine kiya jata hai. isse user apne checklist item ke status ko easily update kar sakta hai, aur progress ko track kar sakta hai.
-    const currentIndex = states.indexOf(item.state); 
+  // ye function checklist item ke state ko cycle karta hai: todo → in-progress → done → todo
+  const handleCycle = () => {
+    const currentIndex = states.indexOf(item.state);
     const nextState = states[(currentIndex + 1) % states.length];
     onStateChange(index, nextState);
   };
 
   return (
-    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition">
-      <span className="text-gray-700 font-medium">{item.topic}</span>
-      <div className="flex items-center gap-2">
-        <a
-          href={getGfgTopicLink(item.topic)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-3 py-2 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition"
-        >
-          Study
-        </a>
-        <button
-          onClick={handleCycle}
-          className={`px-4 py-2 rounded-full font-semibold cursor-pointer transition ${colors[item.state]}`}
-        >
-          {stateLabels[item.state]}
-        </button>
-      </div>
+    <div className="check-row" data-state={item.state}>
+      <button
+        type="button"
+        onClick={handleCycle}
+        className="check-box"
+        data-state={item.state}
+        aria-label={`${item.topic}: ${stateLabels[item.state] || item.state}. Click to change.`}
+      >
+        {item.state === "done" ? "✓" : ""}
+      </button>
+      <span className="check-topic">{item.topic}</span>
+      <button type="button" onClick={handleCycle} className={`${stateTags[item.state] || "tag"} hidden cursor-pointer sm:inline-flex`}>
+        {stateLabels[item.state] || item.state}
+      </button>
+      <a
+        href={getGfgTopicLink(item.topic)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="link-ink shrink-0 text-sm"
+      >
+        Study ↗
+      </a>
     </div>
   );
 };

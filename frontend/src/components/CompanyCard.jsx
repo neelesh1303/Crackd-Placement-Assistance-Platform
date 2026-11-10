@@ -1,47 +1,43 @@
 import { Link } from "react-router-dom"; //Link component is used to create links in the application that allow users to navigate between different routes without causing a full page reload.
 import CompanyLabel from "./CompanyLabel";
-function CompanyCard({ company }) { //CompanyCard component is a reusable component that takes a company object as a prop and displays its information in a card format. it shows the company name, difficulty level, visit month, and roles. it also includes a link to the company details page using the company's slug for navigation.
-   // span is used to display the difficulty level of the company, and its background color changes based on whether the difficulty is "Hard", "Medium", or "Easy". the roles are displayed as small badges. span ka use small pieces of information ko highlight karne ke liye hota hai, aur yahan hum difficulty level ko visually differentiate karne ke liye span ka use kar rahe hain. similarly, roles ko badges ke form me display karne ke liye bhi span ka use kiya gaya hai, taki wo easily distinguishable ho jaye.
-    return (
-    <div className="company-card card-soft hover-lift overflow-hidden p-4">
-      <div className="-mx-4 -mt-4 mb-4 h-1 bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400" />
-      <div className="mb-3 flex items-center justify-between">
-          <CompanyLabel company={company} size="md" />
-        <span
-          className={`rounded-full px-2 py-1 text-xs font-medium shadow-sm ${
-            company.difficulty === "Hard"
-              ? "bg-rose-100 text-rose-700"
-              : company.difficulty === "Medium"
-              ? "bg-amber-100 text-amber-700"
-              : "bg-emerald-100 text-emerald-700"
-          }`}
-        >
-          {company.difficulty}
-        </span>
+
+// difficulty ko ek stamp jaisa dikhate hain — Hard = red, Medium = blue, Easy = green
+const difficultyStamp = (difficulty) => {
+  if (difficulty === "Hard") return "stamp";
+  if (difficulty === "Medium") return "stamp stamp-blue";
+  return "stamp stamp-green";
+};
+
+function CompanyCard({ company, index = 0 }) {
+  const visit = `${company.visitMonth || "TBA"}${company.visitYear ? ` ’${String(company.visitYear).slice(-2)}` : ""}`;
+
+  return (
+    <Link
+      to={`/companies/${company.slug}`}
+      className="sheet lift rise group flex flex-col p-5"
+      style={{ "--i": index % 9 }}
+    >
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <CompanyLabel company={company} size="md" />
+        {company.difficulty && <span className={difficultyStamp(company.difficulty)}>{company.difficulty}</span>}
       </div>
 
-      <p className="company-card-meta mb-2 text-sm">
-        Visit: <span className="font-medium">{company.visitMonth || "N/A"}{company.visitYear ? ` ${company.visitYear}` : ""}</span>
-      </p>
-
-      <div className="mb-4 flex flex-wrap gap-2">
-        {(company.roles || []).slice(0, 3).map((role) => ( //company.roles array me se pehle 3 roles ko display karne ke liye slice(0, 3) ka use kiya gaya hai. agar company.roles undefined hai to default empty array use kiya jayega, taki map function error na de. isse hum ensure karte hain ki agar kisi company ke roles data me missing hai to bhi component sahi tarah se render ho jaye.
-          <span
-            key={role}
-            className="company-role rounded-md px-2 py-1 text-xs"
-          >
+      <div className="mb-5 flex flex-wrap gap-1.5">
+        {(company.roles || []).slice(0, 3).map((role) => ( //company.roles array me se pehle 3 roles ko display karne ke liye slice(0, 3) ka use kiya gaya hai.
+          <span key={role} className="tag">
             {role}
           </span>
         ))}
+        {(company.roles || []).length > 3 && (
+          <span className="tag tag-ghost">+{company.roles.length - 3}</span>
+        )}
       </div>
 
-      <Link
-        to={`/companies/${company.slug}`}
-        className="btn-primary px-4 py-2 text-sm"
-      >
-        View Details
-      </Link>
-    </div>
+      <div className="mt-auto flex items-center justify-between border-t border-dashed border-[color:var(--ink-3)] pt-3">
+        <span className="mono text-xs muted">visits · {visit}</span>
+        <span className="text-sm font-bold transition-transform group-hover:translate-x-1">Open file →</span>
+      </div>
+    </Link>
   );
 }
 

@@ -3,29 +3,28 @@ import React from "react";
 const StreakDisplay = ({ streak }) => {
   const { current, longest, lastActivityDate } = streak;
 
-  const lastDate = lastActivityDate ? new Date(lastActivityDate).toLocaleDateString() : "Never"; //
+  const lastDate = lastActivityDate
+    ? new Date(lastActivityDate).toLocaleDateString(undefined, { day: "numeric", month: "short" })
+    : "never";
 
   return (
-    <div className="grid grid-cols-3 gap-4 mb-6">
-      {/* Current Streak */}
-      <div className="bg-gradient-to-br from-orange-400 to-red-500 text-white p-6 rounded-lg shadow-md">
-        <div className="text-4xl font-bold mb-2">🔥 {current}</div>
-        <p className="text-sm opacity-90">Current Streak</p>
-        <p className="text-xs mt-2 opacity-75">Days in a row</p>
+    <div className="grid grid-cols-1 gap-6 pt-2 sm:grid-cols-3">
+      <div className="postit rise" style={{ "--i": 0 }}>
+        <p className="kicker">Current streak</p>
+        <p className="stat-num mt-3">{current}</p>
+        <p className="hand mt-1 text-xl">days in a row — don't break it</p>
       </div>
 
-      {/* Longest Streak */}
-      <div className="bg-gradient-to-br from-purple-400 to-pink-500 text-white p-6 rounded-lg shadow-md">
-        <div className="text-4xl font-bold mb-2">⭐ {longest}</div>
-        <p className="text-sm opacity-90">Personal Best</p>
-        <p className="text-xs mt-2 opacity-75">Longest streak</p>
+      <div className="postit postit-pink rise" style={{ "--i": 1 }}>
+        <p className="kicker">Personal best</p>
+        <p className="stat-num mt-3">{longest}</p>
+        <p className="hand mt-1 text-xl">longest run so far</p>
       </div>
 
-      {/* Last Activity */}
-      <div className="bg-gradient-to-br from-blue-400 to-cyan-500 text-white p-6 rounded-lg shadow-md">
-        <div className="text-xl font-bold mb-2">📅</div>
-        <p className="text-sm opacity-90">Last Active</p>
-        <p className="text-xs mt-2 opacity-75">{lastDate}</p>
+      <div className="postit postit-green rise" style={{ "--i": 2 }}>
+        <p className="kicker">Last opened the books</p>
+        <p className="mt-3 text-4xl font-extrabold tracking-tight">{lastDate}</p>
+        <p className="hand mt-2 text-xl">keep showing up</p>
       </div>
     </div>
   );

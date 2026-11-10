@@ -4,8 +4,8 @@ import api from "../services/api";
 import ChecklistItem from "../components/ChecklistItem";
 import ReadinessBar from "../components/ReadinessBar";
 import StreakDisplay from "../components/StreakDisplay";
-import CompanyLabel from "../components/CompanyLabel";
 import PageShell from "../components/PageShell";
+import { Empty, Loader, Notice } from "../components/Bits";
 
 const RoadmapDetailsPage = () => {
   const { companySlug } = useParams();
@@ -26,13 +26,12 @@ const RoadmapDetailsPage = () => {
         const experiencesRes = await api.get(
           `/experiences?company=${companySlug}`
         );
-        
+
         // Extract unique topics from company's past experiences (problems asked in interviews)
         const experiences = experiencesRes.data.experiences || [];
         const topicsSet = new Set();
-        
+
         experiences.forEach((exp) => {
-          // If experience has problems or topics associated with it, add them
           if (exp.rounds && Array.isArray(exp.rounds)) {
             exp.rounds.forEach((round) => {
               if (round.problemsAsked && Array.isArray(round.problemsAsked)) {
@@ -60,7 +59,6 @@ const RoadmapDetailsPage = () => {
           setError("no_tracker");
         } else {
           // If we can't fetch experiences, still show the roadmap with all topics
-          // This is a fallback
           setError(null);
         }
       } finally {
@@ -83,55 +81,6 @@ const RoadmapDetailsPage = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <PageShell title="Roadmap details" subtitle="Loading your saved preparation plan." activeTab="progress">
-        <p className="roadmap-status">Loading roadmap...</p>
-      </PageShell>
-    );
-  }
-
-  if (error === "no_tracker") {
-    return (
-      <PageShell title="Roadmap details" subtitle="Save a roadmap to see your progress here." activeTab="progress">
-        <div className="roadmap-empty mx-auto max-w-md p-8 text-center">
-          <p className="text-5xl mb-4">📋</p>
-          <h2 className="text-xl font-bold text-slate-100 mb-2">
-            No Tracker Found 
-          </h2>
-          <p className="text-slate-300 text-sm mb-6">
-            Generate a Roadmap and click on "Save to Tracker" to start tracking your progress
-          </p>
-          <button
-            onClick={() => navigate("/roadmap")}
-            className="rounded-lg bg-slate-900 px-5 py-2 text-white text-sm hover:bg-slate-800 transition"
-          >
-            Generate a Roadmap? →
-          </button>
-        </div>
-      </PageShell>
-    );
-  }
-
-  if (error) {
-    return (
-      <PageShell title="Roadmap details" subtitle="There was a problem loading this plan." activeTab="progress">
-        <p className="roadmap-status roadmap-status-error">{error}</p>
-      </PageShell>
-    );
-  }
-
-  if (!tracker) {
-    return (
-      <PageShell title="Roadmap details" subtitle="No saved tracker data was found." activeTab="progress">
-        <p className="roadmap-status">Tracker data not found</p>
-      </PageShell>
-    );
-  }
-
-  const readiness = tracker.readiness || null;
-  const streak = tracker.streak || null;
-
   const companyLabel = companySlug
     ? companySlug
         .split("-")
@@ -139,109 +88,134 @@ const RoadmapDetailsPage = () => {
         .join(" ")
     : "General Preparation";
 
+  const backButton = (
+    <button type="button" onClick={() => navigate("/progress")} className="btn">
+      ← Progress
+    </button>
+  );
+
+  if (loading) {
+    return (
+      <PageShell title="Roadmap" activeTab="progress">
+        <Loader label="Unfolding the plan" />
+      </PageShell>
+    );
+  }
+
+  if (error === "no_tracker") {
+    return (
+      <PageShell title="Roadmap" activeTab="progress" actions={backButton}>
+        <Empty
+          title="No roadmap saved yet."
+          action={<button type="button" onClick={() => navigate("/roadmap")} className="btn btn-ink">Make a roadmap →</button>}
+        >
+          Generate a roadmap and click “Save to tracker” to start tracking it.
+        </Empty>
+      </PageShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageShell title="Roadmap" activeTab="progress" actions={backButton}>
+        <Notice tone="error">{error}</Notice>
+      </PageShell>
+    );
+  }
+
+  if (!tracker) {
+    return (
+      <PageShell title="Roadmap" activeTab="progress" actions={backButton}>
+        <Empty title="Tracker data not found." />
+      </PageShell>
+    );
+  }
+
+  const readiness = tracker.readiness || null;
+  const streak = tracker.streak || null;
+
+  // original index saath rakhte hain taaki filter ke baad bhi sahi topic update ho
+  const visibleChecklist = (tracker.checklist || [])
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => {
+      // If no company topics fetched, show all (fallback)
+      if (companyTopics.size === 0) return true;
+      // Otherwise, only show topics mentioned in this company's experiences
+      return companyTopics.has(item.topic);
+    });
+
   return (
     <PageShell
-      title={`${companyLabel} roadmap`}
-      subtitle="Review your weekly plan and keep your preparation moving."
+      title={<>{companyLabel} <span className="serif italic">roadmap</span></>}
+      subtitle={
+        tracker?.target?.role
+          ? `Your saved plan for ${tracker.target.role}. One week at a time.`
+          : "Your saved plan. One week at a time."
+      }
       activeTab="progress"
       actions={
-        <button
-          onClick={() => navigate("/progress")}
-          className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-        >
-          Back to Progress
-        </button>
+        <>
+          {backButton}
+          <button type="button" onClick={() => navigate("/roadmap")} className="btn btn-hi">
+            Update roadmap
+          </button>
+        </>
       }
     >
-      <div className="roadmap-details-content mx-auto max-w-4xl">
-        
-        {/* Header */}
-        <div className="mb-2">
-          <CompanyLabel name={companyLabel} size="lg" />
-        </div>
-        {tracker?.target?.role && (
-              <p className="text-slate-300 mb-8">
-            Role: <span className="font-semibold text-slate-100">{tracker.target.role}</span>
-          </p>
-        )}
-
-        {/* Streak Section */}
+      <div className="space-y-12">
         {streak && <StreakDisplay streak={streak} />}
 
-        {/* Readiness Bar */}
         {readiness && <ReadinessBar readiness={readiness} />}
 
-        {/* Weekly Plan Section */}
-        {tracker.weeklyPlan?.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold text-slate-100 mb-4">📅 Weekly Plan</h2>
-            <div className="space-y-4">
-              {tracker.weeklyPlan.map((week, idx) => (
-                <div key={idx} className="roadmap-week p-5">
-                  <h3 className="font-bold text-lg text-slate-100">Week {week.week}</h3>
-                  {week.focus?.length > 0 && (
-                    <p className="text-sm text-slate-300 mt-2">
-                      Focus: {week.focus.join(", ")}
-                    </p>
-                  )}
-                  {week.tasks?.length > 0 && (
-                    <ul className="mt-3 list-disc list-inside text-sm text-slate-300 space-y-1">
-                      {week.tasks.map((task, i) => (
-                        <li key={i}>{task}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr]">
+          {/* Weekly plan */}
+          {tracker.weeklyPlan?.length > 0 && (
+            <section>
+              <h2 className="section-title"><span className="mono">wk</span> Weekly plan</h2>
+              <ol className="m-0 list-none space-y-5 p-0">
+                {tracker.weeklyPlan.map((week, idx) => (
+                  <li key={idx} className="sheet sheet-pad rise" style={{ "--i": idx % 8 }}>
+                    <div className="flex items-baseline gap-4">
+                      <span className="mono text-sm text-[color:var(--red)]">{String(week.week).padStart(2, "0")}</span>
+                      <h3 className="text-xl font-extrabold">Week {week.week}</h3>
+                    </div>
+                    {week.focus?.length > 0 && (
+                      <p className="mt-3 text-sm"><span className="hl font-semibold">{week.focus.join(" + ")}</span></p>
+                    )}
+                    {week.tasks?.length > 0 && (
+                      <ul className="mt-3 list-none space-y-1.5 p-0 text-sm">
+                        {week.tasks.map((task, i) => (
+                          <li key={i} className="flex gap-2">
+                            <span className="text-[color:var(--red)]">—</span>
+                            <span>{task}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
 
-        {/* Checklist Section */}
-        <div className="mt-8">
-          <h2 className="text-2xl font-bold text-slate-100 mb-4">
-            📝 Study Checklist
-          </h2>
-
-          {tracker.checklist?.length === 0 ? (
-            <p className="text-slate-400 text-sm">
-              Checklist empty hai — roadmap me topics add karo.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {tracker.checklist
-                .filter((item) => {
-                  // If no company topics fetched, show all (fallback)
-                  if (companyTopics.size === 0) return true;
-                  // Otherwise, only show topics mentioned in this company's experiences
-                  return companyTopics.has(item.topic);
-                })
-                .map((item, index) => (
+          {/* Checklist */}
+          <section className="lg:sticky lg:top-24 lg:self-start">
+            <h2 className="section-title"><span className="mono">✓</span> Checklist</h2>
+            <div className="sheet sheet-pad">
+              {visibleChecklist.length === 0 ? (
+                <p className="muted text-sm">Checklist is empty — add topics from your roadmap.</p>
+              ) : (
+                visibleChecklist.map(({ item, index }) => (
                   <ChecklistItem
                     key={index}
                     item={item}
                     index={index}
                     onStateChange={handleChecklistUpdate}
                   />
-                ))}
+                ))
+              )}
             </div>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="mt-8 pb-8 flex gap-4">
-          <button
-            onClick={() => navigate("/progress")}
-            className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-white/10 transition"
-          >
-            ← Back to Progress
-          </button>
-          <button
-            onClick={() => navigate("/roadmap")}
-            className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 transition"
-          >
-            Update Roadmap
-          </button>
+          </section>
         </div>
       </div>
     </PageShell>

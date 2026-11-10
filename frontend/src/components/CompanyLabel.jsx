@@ -1,5 +1,8 @@
 import React from 'react';
 
+// Highlighter-ink palette for initials tiles — picked by hashing the company name.
+const SWATCHES = ['#ffe25a', '#b9ec8f', '#ffb4cf', '#cdd6ff', '#ffd0a8', '#dccbff', '#a9e7e0'];
+
 const buildInitials = (value) => {
   const parts = (value || '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return 'C';
@@ -11,9 +14,9 @@ const buildBackground = (value) => {
   const name = (value || 'company').toLowerCase();
   let hash = 0;
   for (let index = 0; index < name.length; index += 1) {
-    hash = (hash * 31 + name.charCodeAt(index)) % 360;
+    hash = (hash * 31 + name.charCodeAt(index)) % 9973;
   }
-  return `linear-gradient(135deg, hsl(${hash}, 70%, 48%), hsl(${(hash + 36) % 360}, 72%, 40%))`;
+  return SWATCHES[hash % SWATCHES.length];
 };
 
 const looksLikeImageSource = (value) => {
@@ -21,13 +24,13 @@ const looksLikeImageSource = (value) => {
   return /^(https?:)?\/\//i.test(value) || /^data:image\//i.test(value) || /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(value);
 };
 
-const CompanyLabel = ({ company, name, logo, className = '', size = 'sm' }) => {
+const CompanyLabel = ({ company, name, logo, className = '', size = 'sm', hideName = false }) => {
   const displayName = (company && company.name) || name || 'Unknown';
   const displayLogo = (company && company.logo) || logo || '';
   const initials = buildInitials(displayName);
   const [imageFailed, setImageFailed] = React.useState(false);
-  const avatarSizeClasses = size === 'lg' ? 'w-10 h-10 text-base' : size === 'md' ? 'w-8 h-8 text-sm' : 'w-6 h-6 text-xs';
-  const nameSizeClasses = size === 'lg' ? 'text-xl' : size === 'md' ? 'text-base' : 'text-sm';
+  const avatarSizeClasses = size === 'lg' ? 'w-14 h-14 text-xl' : size === 'md' ? 'w-10 h-10 text-sm' : 'w-7 h-7 text-xs';
+  const nameSizeClasses = size === 'lg' ? 'text-2xl font-extrabold tracking-tight' : size === 'md' ? 'text-lg font-bold tracking-tight' : 'text-sm font-semibold';
   const canRenderImage = looksLikeImageSource(displayLogo) && !imageFailed;
 
   React.useEffect(() => {
@@ -35,9 +38,9 @@ const CompanyLabel = ({ company, name, logo, className = '', size = 'sm' }) => {
   }, [displayLogo]);
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={`flex min-w-0 items-center gap-3 ${className}`}>
       <div
-        className={`shrink-0 rounded-full flex items-center justify-center overflow-hidden shadow-md border border-white/40 font-bold ${avatarSizeClasses}`}
+        className={`co-avatar ${avatarSizeClasses}`}
         style={{ background: canRenderImage ? '#ffffff' : buildBackground(displayName) }}
       >
         {canRenderImage ? (
@@ -48,10 +51,10 @@ const CompanyLabel = ({ company, name, logo, className = '', size = 'sm' }) => {
             onError={() => setImageFailed(true)}
           />
         ) : (
-          <span className="text-white leading-none">{initials}</span>
+          <span className="leading-none">{initials}</span>
         )}
       </div>
-      <span className={`font-medium text-slate-900 ${nameSizeClasses}`}>{displayName}</span>
+      {!hideName && <span className={`truncate ${nameSizeClasses}`}>{displayName}</span>}
     </div>
   );
 };

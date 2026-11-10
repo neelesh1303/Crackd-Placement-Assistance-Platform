@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; //useNavigate hook React Router v6 ka feature hai, jo hume programmatically navigate karne ki suvidha deta hai. jab user successful login karega, to hum useNavigate hook ka use karke user ko "/dashboard" route par redirect kar denge. isse user ko manually dashboard URL type karne ki zarurat nahi padegi, aur better user experience milega.
+import { Link, useNavigate } from "react-router-dom"; //useNavigate hook se register ke baad user ko "/dashboard" par bhej dete hain.
 import api from "../services/api";
 import { useAuth } from "../context/useAuth";
+import AuthLayout from "../components/AuthLayout";
+import { Notice } from "../components/Bits";
 
 function Register() {
   const navigate = useNavigate();
@@ -37,7 +39,7 @@ function Register() {
     try {
       setLoading(true);
       const payload = { ...form, year: Number(form.year) };
-      const res = await api.post("/auth/register", payload); //jab user register karega to uska data payload me jayega, jisme form ke saare fields honge. year field ko number me convert kar denge, kyunki backend me year field number type ka hai. agar hum string bhejenge to backend me validation error aayega. isliye year field ko Number() function se convert kar ke bhej rahe hain.
+      const res = await api.post("/auth/register", payload); //year ko Number me convert karte hain kyunki backend me year number type ka hai.
       login(res.data);
       navigate("/dashboard");
     } catch (err) {
@@ -51,124 +53,72 @@ function Register() {
   };
 
   return (
-    <div className="auth-page min-h-screen text-slate-950">
-      <div className="mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10 lg:px-8">
-        <div className="grid w-full gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          <section className="rounded-[2rem] border border-white/10 bg-white/5 p-10 shadow-[0_32px_90px_rgba(15,23,42,0.24)] backdrop-blur-xl glass-card fade-up">
-            <span className="inline-flex rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 shadow-sm">
-              Join the placement hub
-            </span>
-            <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
-              Create your Crackd account.
-            </h1>
-            <p className="mt-4 max-w-xl text-slate-300 leading-8">
-              Register with your college email to unlock AI roadmaps, experience sharing, and progress tracking from one dashboard.
-            </p>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-3xl bg-slate-900/70 p-5 ring-1 ring-white/10 transition hover:-translate-y-1 hover:bg-slate-900/80">
-                <p className="text-sm text-emerald-200">Roadmap generator</p>
-                <p className="mt-2 text-lg font-semibold text-white">Plan your study path</p>
-              </div>
-              <div className="rounded-3xl bg-slate-900/70 p-5 ring-1 ring-white/10 transition hover:-translate-y-1 hover:bg-slate-900/80">
-                <p className="text-sm text-sky-200">Progress tracking</p>
-                <p className="mt-2 text-lg font-semibold text-white">Keep your streak alive</p>
-              </div>
-            </div>
-          </section>
-
-          <form onSubmit={handleSubmit} className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/95 p-8 shadow-[0_32px_90px_rgba(15,23,42,0.24)] backdrop-blur-xl fade-up">
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[radial-gradient(circle,_rgba(59,130,246,0.18),_transparent_55%)]" />
-
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-300">Create account</p>
-                <h2 className="text-3xl font-bold text-white">Register now</h2>
-              </div>
-              <Link
-                to="/login"
-                className="rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-white hover:text-slate-950"
-              >
-                Already a member?
-              </Link>
-            </div>
-
-            {error && <p className="mb-4 rounded-2xl bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
-
-            <div className="space-y-5">
-              <label className="block text-sm font-medium text-slate-300">
-                Full name
-                <input
-                  type="text"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-                />
-              </label>
-
-              <label className="block text-sm font-medium text-slate-300">
-                College email
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-                />
-              </label>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <label className="block text-sm font-medium text-slate-300">
-                  Password
-                  <input
-                    type="password"
-                    name="password"
-                    value={form.password}
-                    onChange={handleChange}
-                    className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-                  />
-                </label>
-
-                <label className="block text-sm font-medium text-slate-300">
-                  Branch
-                  <input
-                    type="text"
-                    name="branch"
-                    value={form.branch}
-                    onChange={handleChange}
-                    className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-                  />
-                </label>
-              </div>
-
-              <label className="block text-sm font-medium text-slate-300">
-                Year
-                <input
-                  type="number"
-                  name="year"
-                  value={form.year}
-                  onChange={handleChange}
-                  className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-                />
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-8 w-full rounded-3xl bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-3 text-base font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Signing up..." : "Create account"}
-            </button>
-
-            <p className="mt-6 text-center text-sm text-slate-500">
-              Use your official NIE email to register and access the full prep suite.
-            </p>
-          </form>
+    <AuthLayout
+      kicker="new notebook"
+      title={
+        <>
+          Start <span className="hl">fresh</span>. <span className="serif">Prep smart.</span>
+        </>
+      }
+      aside={
+        <ul className="max-w-md space-y-4">
+          {[
+            ["01", "Read what seniors were actually asked"],
+            ["02", "Get a roadmap built around your weak topics"],
+            ["03", "Track it until the readiness meter fills up"],
+          ].map(([no, text]) => (
+            <li key={no} className="flex items-baseline gap-4 border-b border-dashed border-[color:var(--ink-3)] pb-3">
+              <span className="mono text-sm text-[color:var(--red)]">{no}</span>
+              <span className="text-lg font-semibold">{text}</span>
+            </li>
+          ))}
+        </ul>
+      }
+    >
+      <form onSubmit={handleSubmit} className="sheet taped sheet-pad space-y-5">
+        <div className="flex items-end justify-between gap-4 border-b border-dashed border-[color:var(--ink-3)] pb-4">
+          <div>
+            <p className="kicker">Create account</p>
+            <h2 className="mt-1 text-3xl font-extrabold">Register</h2>
+          </div>
+          <Link to="/login" className="link-ink text-sm">Already a member?</Link>
         </div>
-      </div>
-    </div>
+
+        {error && <Notice tone="error">{error}</Notice>}
+
+        <div>
+          <label htmlFor="reg-name" className="field-label">Full name</label>
+          <input id="reg-name" type="text" name="name" autoComplete="name" value={form.name} onChange={handleChange} className="field" />
+        </div>
+
+        <div>
+          <label htmlFor="reg-email" className="field-label">College email</label>
+          <input id="reg-email" type="email" name="email" autoComplete="email" placeholder="you@nie.ac.in" value={form.email} onChange={handleChange} className="field" />
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="reg-password" className="field-label">Password</label>
+            <input id="reg-password" type="password" name="password" autoComplete="new-password" value={form.password} onChange={handleChange} className="field" />
+          </div>
+          <div>
+            <label htmlFor="reg-branch" className="field-label">Branch</label>
+            <input id="reg-branch" type="text" name="branch" placeholder="CSE" value={form.branch} onChange={handleChange} className="field" />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="reg-year" className="field-label">Year</label>
+          <input id="reg-year" type="number" name="year" placeholder="3" value={form.year} onChange={handleChange} className="field" />
+        </div>
+
+        <button type="submit" disabled={loading} className="btn btn-ink btn-block !mt-7">
+          {loading ? "Setting up your notebook…" : <>Create account <span className="arrow">→</span></>}
+        </button>
+
+        <p className="mono text-center text-xs faint">use your official NIE email</p>
+      </form>
+    </AuthLayout>
   );
 }
 

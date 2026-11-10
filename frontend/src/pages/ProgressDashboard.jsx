@@ -6,6 +6,7 @@ import ChecklistItem from "../components/ChecklistItem";
 import ReadinessBar from "../components/ReadinessBar";
 import StreakDisplay from "../components/StreakDisplay";
 import CompanyLabel from "../components/CompanyLabel";
+import { Empty, Loader, Notice } from "../components/Bits";
 
 const ProgressDashboard = () => {
   const [tracker, setTracker] = useState(null);
@@ -48,13 +49,21 @@ const ProgressDashboard = () => {
   };
 
   const actions = (
-    <button
-      type="button"
-      onClick={() => navigate("/roadmap")}
-      className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-    >
-      Generate Roadmap
+    <button type="button" onClick={() => navigate("/roadmap")} className="btn btn-hi">
+      New roadmap
     </button>
+  );
+
+  const shell = (children, extra = {}) => (
+    <PageShell
+      title="Progress"
+      subtitle="Your streak, your readiness, and the checklist that gets you there."
+      activeTab="progress"
+      actions={actions}
+      {...extra}
+    >
+      {children}
+    </PageShell>
   );
 
   const companySlug = tracker?.target?.companySlug || "";
@@ -65,141 +74,72 @@ const ProgressDashboard = () => {
         .join(" ")
     : "General Preparation";
 
-  if (loading) {
-    return (
-      <PageShell
-        title="Progress Tracker"
-        subtitle="Track your placement readiness and manage your study streak."
-        activeTab="progress"
-        actions={actions}
-      >
-        <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-10 text-center text-slate-300">
-          Loading your progress...
-        </div>
-      </PageShell>
-    );
-  }
+  if (loading) return shell(<Loader label="Counting your ticks" />);
 
   if (error === "no_tracker") {
-    return (
-      <PageShell
-        title="Progress Tracker"
-        subtitle="Track your placement readiness and manage your study streak."
-        activeTab="progress"
-        actions={actions}
+    return shell(
+      <Empty
+        title="Nothing tracked yet."
+        action={<button type="button" onClick={() => navigate("/roadmap")} className="btn btn-ink">Make a roadmap →</button>}
       >
-        <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-8 text-center text-slate-300">
-          <p className="text-5xl mb-4">📋</p>
-          <h2 className="text-2xl font-semibold text-white mb-2">No Tracker Found</h2>
-          <p className="text-slate-400 mb-6">
-            Save a roadmap to tracker first. Then your progress will appear here.
-          </p>
-          <button
-            onClick={() => navigate("/roadmap")}
-            className="rounded-full bg-slate-800 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-700 transition"
-          >
-            Generate a Roadmap →
-          </button>
-        </div>
-      </PageShell>
+        Generate a roadmap and hit “Save to tracker” — your streak and checklist will show up here.
+      </Empty>
     );
   }
 
-  if (error) {
-    return (
-      <PageShell
-        title="Progress Tracker"
-        subtitle="Track your placement readiness and manage your study streak."
-        activeTab="progress"
-        actions={actions}
-      >
-        <div className="rounded-3xl border border-red-500/20 bg-rose-950/80 p-8 text-center text-rose-200">
-          <p>{error}</p>
-        </div>
-      </PageShell>
-    );
-  }
+  if (error) return shell(<Notice tone="error">{error}</Notice>);
 
-  if (!tracker) {
-    return (
-      <PageShell
-        title="Progress Tracker"
-        subtitle="Track your placement readiness and manage your study streak."
-        activeTab="progress"
-        actions={actions}
-      >
-        <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-8 text-center text-slate-300">
-          No tracker data found.
-        </div>
-      </PageShell>
-    );
-  }
+  if (!tracker) return shell(<Empty title="No tracker data found." />);
 
   const readiness = tracker.readiness || null;
   const streak = tracker.streak || null;
 
-  return (
-    <PageShell
-      title="Progress Tracker"
-      subtitle="Track your placement readiness and manage your study streak."
-      activeTab="progress"
-      actions={actions}
-    >
-      <div className="space-y-8">
-        {streak && <StreakDisplay streak={streak} />}
+  return shell(
+    <div className="space-y-12">
+      {streak && <StreakDisplay streak={streak} />}
 
+      <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
         {readiness && <ReadinessBar readiness={readiness} />}
 
-        <div
+        <button
+          type="button"
           onClick={() => navigate(`/roadmap-details/${companySlug}`)}
-          className="cursor-pointer rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl transition hover:border-slate-200"
+          className="sheet lift group p-6 text-left"
         >
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <CompanyLabel name={companyLabel} className="mb-2" />
-              {tracker?.target?.role && (
-                <p className="text-sm text-slate-300 mt-2">
-                  Role: <span className="font-semibold text-white">{tracker.target.role}</span>
-                </p>
-              )}
-            </div>
-            <div className="text-3xl text-slate-300">→</div>
-          </div>
-          <p className="mt-4 text-sm text-slate-400">Click to view full roadmap details</p>
-        </div>
-
-        <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <h2 className="text-2xl font-semibold text-white">📝 Study Checklist</h2>
-            <span className="text-sm text-slate-400">{tracker.checklist?.length || 0} items</span>
-          </div>
-
-          {tracker.checklist?.length === 0 ? (
-            <p className="text-slate-400">Checklist is empty. Add more topics from your roadmap.</p>
-          ) : (
-            <div className="space-y-3">
-              {tracker.checklist.map((item, index) => (
-                <ChecklistItem
-                  key={index}
-                  item={item}
-                  index={index}
-                  onStateChange={handleChecklistUpdate}
-                />
-              ))}
-            </div>
+          <p className="kicker">Current target</p>
+          <CompanyLabel name={companyLabel} size="md" className="mt-4" />
+          {tracker?.target?.role && (
+            <p className="mt-3 text-sm muted">
+              as <span className="font-bold text-[color:var(--ink)]">{tracker.target.role}</span>
+            </p>
           )}
+          <p className="mt-6 font-bold transition-transform group-hover:translate-x-1">Open full roadmap →</p>
+        </button>
+      </div>
+
+      <section className="sheet sheet-pad">
+        <div className="mb-3 flex items-baseline justify-between gap-4">
+          <h2 className="section-title !mb-0"><span className="mono">✓</span> Study checklist</h2>
+          <span className="mono text-xs muted">{tracker.checklist?.length || 0} topics · tap the box to update</span>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => navigate("/roadmap")}
-            className="rounded-full border border-slate-700 bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition"
-          >
-            Generate a New Roadmap?
-          </button>
-        </div>
-      </div>
-    </PageShell>
+        {tracker.checklist?.length === 0 ? (
+          <Empty title="Checklist is empty.">Add topics from your roadmap.</Empty>
+        ) : (
+          <div>
+            {tracker.checklist.map((item, index) => (
+              <ChecklistItem
+                key={index}
+                item={item}
+                index={index}
+                onStateChange={handleChecklistUpdate}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>,
+    { note: "tap the boxes. it feels good." }
   );
 };
 

@@ -3,6 +3,23 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import PageShell from "../components/PageShell";
 import CompanyLabel from "../components/CompanyLabel";
+import { Empty, Loader, Notice } from "../components/Bits";
+
+// round type ke hisab se tag color
+const roundTag = (type) => {
+  const t = String(type || "").toUpperCase();
+  if (t.includes("OA")) return "tag tag-blue";
+  if (t.includes("TECH") || t.includes("DSA")) return "tag tag-green";
+  if (t.includes("HR") || t.includes("MANAGE")) return "tag tag-pink";
+  if (t.includes("LLD") || t.includes("SYSTEM")) return "tag tag-hi";
+  return "tag";
+};
+
+const difficultyStamp = (difficulty) => {
+  if (difficulty === "Hard") return "stamp";
+  if (difficulty === "Medium") return "stamp stamp-blue";
+  return "stamp stamp-green";
+};
 
 function CompanyDetail() {
   const { slug } = useParams();
@@ -44,7 +61,7 @@ function CompanyDetail() {
     loadData();
   }, [slug]);
 
-  // Prepare roadmap for this company
+  // Prepare roadmap for this company — sabse zyada pooche gaye topics ko weak mark karke roadmap page par bhejte hain
   const handlePrepare = () => {
     const allTopics = experiences.flatMap((experience) =>
       Array.isArray(experience.rounds)
@@ -76,300 +93,195 @@ function CompanyDetail() {
     });
   };
 
-  // Loading state
+  const backLink = (
+    <Link to="/companies" className="btn">
+      ← All companies
+    </Link>
+  );
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 px-4 py-8">
-        <div className="mx-auto max-w-5xl text-slate-300">
-          Loading company details...
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="min-h-screen bg-slate-950 px-4 py-8">
-        <div className="mx-auto max-w-5xl">
-          <p className="mb-4 rounded-lg bg-red-950/50 border border-red-500/30 p-3 text-red-300">
-            {error}
-          </p>
-
-          <Link
-            to="/companies"
-            className="text-sm font-medium text-cyan-400 underline hover:text-cyan-300"
-          >
-            Back to companies
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Company not found
-  if (!company) {
-    return (
-      <PageShell
-        title="Company Details"
-        subtitle="Review interview experiences and prepare for this company."
-        activeTab="companies"
-      >
-        <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-8 text-slate-300">
-          <p className="mb-4 text-slate-100">
-            Company not found.
-          </p>
-
-          <Link
-            to="/companies"
-            className="text-sm font-medium text-cyan-400 underline hover:text-cyan-300"
-          >
-            Back to companies
-          </Link>
-        </div>
+      <PageShell title="Opening the file" activeTab="companies">
+        <Loader label="Opening the file" />
       </PageShell>
     );
   }
 
+  if (error) {
+    return (
+      <PageShell title="Company file" activeTab="companies" actions={backLink}>
+        <Notice tone="error">{error}</Notice>
+      </PageShell>
+    );
+  }
+
+  if (!company) {
+    return (
+      <PageShell title="Company file" activeTab="companies" actions={backLink}>
+        <Empty title="No file with that name." action={backLink}>
+          This company isn't in the records yet.
+        </Empty>
+      </PageShell>
+    );
+  }
+
+  const offers = experiences.filter((exp) => exp.gotOffer).length;
+
   return (
     <PageShell
-      title={company.name || "Company Details"}
-      subtitle="Review interview experiences and company round details."
+      title={company.name || "Company file"}
+      subtitle="Everything seniors wrote down after interviewing here — round by round."
       activeTab="companies"
-      actions={
-        <Link
-          to="/companies"
-          className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-        >
-          Back to Companies
-        </Link>
-      }
+      actions={backLink}
     >
-      <div className="space-y-8">
-
-        {/* ================= COMPANY HEADER ================= */}
-        <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-lg">
-
-          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
-            {/* Company information */}
-            <div>
-              <CompanyLabel
-                company={company}
-                size="lg"
-              />
-
-              <p className="mt-3 text-sm text-slate-300">
-                Visit:{" "}
-                <span className="font-semibold text-white">
-                  {company.visitMonth || "N/A"}
-                  {company.visitYear
-                    ? ` ${company.visitYear}`
-                    : ""}
-                </span>
-              </p>
+      <div className="grid gap-10 lg:grid-cols-[20rem_1fr]">
+        {/* ===== Company summary (sidebar) ===== */}
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="sheet taped sheet-pad">
+            <div className="flex items-start justify-between gap-3">
+              <CompanyLabel company={company} size="lg" hideName />
+              {company.difficulty && <span className={difficultyStamp(company.difficulty)}>{company.difficulty}</span>}
             </div>
 
-            {/* Difficulty */}
-            <span
-              className={
-                "w-fit rounded-full px-3 py-1 text-xs font-semibold " +
-                (company.difficulty === "Hard"
-                  ? "bg-rose-100 text-rose-700"
-                  : company.difficulty === "Medium"
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-emerald-100 text-emerald-700")
-              }
-            >
-              {company.difficulty || "Unknown"}
-            </span>
-          </div>
+            <dl className="mt-6 space-y-3 text-sm">
+              <div className="flex justify-between gap-4 border-b border-dashed border-[color:var(--ink-3)] pb-2">
+                <dt className="mono muted">visits</dt>
+                <dd className="font-bold">
+                  {company.visitMonth || "TBA"}
+                  {company.visitYear ? ` ${company.visitYear}` : ""}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4 border-b border-dashed border-[color:var(--ink-3)] pb-2">
+                <dt className="mono muted">experiences</dt>
+                <dd className="font-bold">{experiences.length}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="mono muted">offers logged</dt>
+                <dd className="font-bold">{offers}</dd>
+              </div>
+            </dl>
 
-          {/* Roles */}
-          <div className="flex flex-wrap gap-2">
-            {(company.roles || []).map((role) => (
-              <span
-                key={role}
-                className="rounded-md border border-white/10 bg-slate-800 px-3 py-1 text-xs text-slate-200"
-              >
-                {role}
-              </span>
-            ))}
-          </div>
+            {(company.roles || []).length > 0 && (
+              <div className="mt-6">
+                <p className="field-label">Roles</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {company.roles.map((role) => (
+                    <span key={role} className="tag">{role}</span>
+                  ))}
+                </div>
+              </div>
+            )}
 
-          {/* Prepare button */}
-          <div className="mt-6">
-            <button
-              onClick={handlePrepare}
-              className="rounded-full bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-            >
-              Prepare for this company
+            <button type="button" onClick={handlePrepare} className="btn btn-ink btn-block mt-7">
+              Prep for {company.name} <span className="arrow">→</span>
             </button>
+            <p className="hand mt-3 text-center text-lg text-[color:var(--blue)]">
+              builds a roadmap from the topics they ask most
+            </p>
           </div>
-        </div>
+        </aside>
 
-        {/* ================= EXPERIENCES ================= */}
-
-        <div>
-          <h2 className="mb-4 text-xl font-semibold text-white">
-            Experiences
+        {/* ===== Experiences ===== */}
+        <section>
+          <h2 className="section-title">
+            <span className="mono">{String(experiences.length).padStart(2, "0")}</span> Interview experiences
           </h2>
 
-          {/* No experiences */}
           {experiences.length === 0 && (
-            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-5 text-slate-300">
-              No experiences yet for this company.
-            </div>
+            <Empty
+              title="No stories yet."
+              action={<Link to="/add-experience" className="btn btn-hi">Be the first to write one</Link>}
+            >
+              Nobody has written about interviewing here yet.
+            </Empty>
           )}
 
-          {/* Experience cards */}
-          <div className="space-y-6">
-            {experiences.map((exp) => (
-              <div key={exp._id} className="exp-card">
-                {/* Experience header badges */}
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-300">
-                      <span>💼</span> {exp.role || "Role Unspecified"}
-                    </span>
-
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300">
-                      <span>📅</span> Year: {exp.year || exp.visitYear || "N/A"}
-                    </span>
-
-                    {exp.ctc && (
-                      <span className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300">
-                        <span>💰</span> {exp.ctc} LPA
-                      </span>
-                    )}
-
-                    {exp.cgpaCutoff && (
-                      <span className="inline-flex items-center gap-1 rounded-lg border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-300">
-                        <span>🎯</span> CGPA {exp.cgpaCutoff}+
-                      </span>
-                    )}
+          <div className="space-y-8">
+            {experiences.map((exp, expIndex) => (
+              <article key={exp._id} className="sheet rise overflow-hidden" style={{ "--i": expIndex % 6 }}>
+                {/* header */}
+                <header className="flex flex-wrap items-center justify-between gap-3 border-b-[1.5px] border-[color:var(--ink)] bg-[color:var(--paper-2)] px-5 py-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-lg font-extrabold">{exp.role || "Role unspecified"}</span>
+                    <span className="tag">{exp.year || exp.visitYear || "year n/a"}</span>
+                    {exp.ctc && <span className="tag tag-hi">₹ {exp.ctc} LPA</span>}
+                    {exp.cgpaCutoff && <span className="tag">CGPA {exp.cgpaCutoff}+</span>}
                   </div>
+                  {exp.gotOffer ? (
+                    <span className="stamp stamp-green">Got the offer</span>
+                  ) : (
+                    <span className="mono text-xs muted">no offer</span>
+                  )}
+                </header>
 
-                  <div>
-                    {exp.gotOffer ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-1 text-xs font-bold text-emerald-300">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                        Offer Accepted 🎉
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-600 bg-slate-800/80 px-3 py-1 text-xs font-medium text-slate-300">
-                        Interview Candidate
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Rounds */}
-                {Array.isArray(exp.rounds) && exp.rounds.length > 0 && (
-                  <div className="mb-4">
-                    <h3 className="mb-3.5 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-teal-400">
-                      <span>⚡</span> Interview Rounds ({exp.rounds.length})
-                    </h3>
-
-                    <div className="space-y-3.5">
-                      {exp.rounds.map((round, idx) => {
-                        const roundType = String(round.type || "Interview").toUpperCase();
-                        let badgeStyle = "border-sky-500/30 bg-sky-500/15 text-sky-300";
-                        if (roundType.includes("OA")) badgeStyle = "border-cyan-500/40 bg-cyan-500/15 text-cyan-300";
-                        else if (roundType.includes("TECH") || roundType.includes("DSA")) badgeStyle = "border-emerald-500/40 bg-emerald-500/15 text-emerald-300";
-                        else if (roundType.includes("HR") || roundType.includes("MANAGE")) badgeStyle = "border-amber-500/40 bg-amber-500/15 text-amber-300";
-                        else if (roundType.includes("LLD") || roundType.includes("SYSTEM")) badgeStyle = "border-purple-500/40 bg-purple-500/15 text-purple-300";
-
-                        return (
-                          <div key={idx} className="exp-round-card">
-                            {/* Round Header */}
-                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2.5 mb-3">
-                              <div className="flex items-center gap-2.5">
-                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-slate-200">
-                                  {round.roundNo || idx + 1}
-                                </span>
-                                <span className={`rounded-md border px-2.5 py-0.5 text-xs font-bold tracking-wide ${badgeStyle}`}>
-                                  {round.type || "Interview Round"}
-                                </span>
-                              </div>
-
-                              {round.duration && (
-                                <span className="text-xs text-slate-400 flex items-center gap-1">
-                                  <span>⏱️</span> {round.duration}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Description */}
-                            {round.description && (
-                              <p className="mb-3 text-sm leading-relaxed text-slate-200 whitespace-pre-line">
-                                {round.description}
-                              </p>
-                            )}
-
-                            {/* Topics Covered */}
-                            {Array.isArray(round.topics) && round.topics.length > 0 && (
-                              <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                                <span className="text-xs font-medium text-slate-400 mr-1">Topics:</span>
-                                {round.topics.map((topic, tIdx) => (
-                                  <span key={tIdx} className="exp-topic-chip">
-                                    #{topic}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Problems Asked */}
-                            {Array.isArray(round.problemsAsked) && round.problemsAsked.length > 0 && (
-                              <div className="mt-2.5 rounded-lg bg-black/30 border border-white/5 p-3">
-                                <p className="mb-2 text-xs font-semibold text-teal-300 flex items-center gap-1.5">
-                                  <span>💻</span> Coding Problems Asked:
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                  {round.problemsAsked.map((problem, pIdx) => (
-                                    <span key={pIdx} className="exp-problem-chip">
-                                      <span className="text-cyan-400 opacity-75 font-bold">⟨/⟩</span>
-                                      {problem}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Tips & Resources Footer */}
-                {(exp.tips || (Array.isArray(exp.resources) && exp.resources.length > 0)) && (
-                  <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5 text-sm">
-                    {exp.tips && (
-                      <p className="text-slate-200">
-                        <strong className="text-amber-300 flex items-center gap-1 mb-1">
-                          <span>💡</span> Candidate Prep Tips:
-                        </strong>
-                        {exp.tips}
-                      </p>
-                    )}
-                    {Array.isArray(exp.resources) && exp.resources.length > 0 && (
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5 pt-2 border-t border-amber-500/10">
-                        <span className="text-xs font-medium text-amber-300/80">Recommended Resources:</span>
-                        {exp.resources.map((res, rIdx) => (
-                          <span key={rIdx} className="rounded bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200">
-                            {res}
+                <div className="p-5 sm:p-6">
+                  {/* rounds as a timeline */}
+                  {Array.isArray(exp.rounds) && exp.rounds.length > 0 && (
+                    <ol className="relative m-0 list-none space-y-6 border-l-[1.5px] border-dashed border-[color:var(--ink)] p-0 pl-6">
+                      {exp.rounds.map((round, idx) => (
+                        <li key={idx} className="relative">
+                          <span className="absolute -left-[2.2rem] top-0 grid h-7 w-7 place-items-center rounded-full border-[1.5px] border-[color:var(--ink)] bg-[color:var(--sheet)] font-mono text-xs font-bold">
+                            {round.roundNo || idx + 1}
                           </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={roundTag(round.type)}>{round.type || "Interview"}</span>
+                            {round.duration && <span className="mono text-xs muted">⏱ {round.duration}</span>}
+                          </div>
+
+                          {round.description && (
+                            <p className="mt-3 whitespace-pre-line leading-relaxed">{round.description}</p>
+                          )}
+
+                          {Array.isArray(round.problemsAsked) && round.problemsAsked.filter(Boolean).length > 0 && (
+                            <div className="mt-3">
+                              <p className="field-label">Problems asked</p>
+                              <ul className="m-0 list-none space-y-1 p-0">
+                                {round.problemsAsked.filter(Boolean).map((problem, pIdx) => (
+                                  <li key={pIdx} className="mono text-sm">
+                                    <span className="text-[color:var(--red)]">›</span> <span className="hl">{problem}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {Array.isArray(round.topics) && round.topics.filter(Boolean).length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              {round.topics.filter(Boolean).map((topic, tIdx) => (
+                                <span key={tIdx} className="tag tag-ghost">#{topic}</span>
+                              ))}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+
+                  {/* tips + resources */}
+                  {(exp.tips || (Array.isArray(exp.resources) && exp.resources.length > 0)) && (
+                    <div className="postit mt-8">
+                      {exp.tips && (
+                        <>
+                          <p className="kicker">Their advice</p>
+                          <p className="hand mt-2 text-2xl leading-snug">“{exp.tips}”</p>
+                        </>
+                      )}
+                      {Array.isArray(exp.resources) && exp.resources.length > 0 && (
+                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                          <span className="mono text-xs">used:</span>
+                          {exp.resources.map((res, rIdx) => (
+                            <span key={rIdx} className="tag">{res}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </article>
             ))}
           </div>
-        </div>
-
+        </section>
       </div>
     </PageShell>
   );
