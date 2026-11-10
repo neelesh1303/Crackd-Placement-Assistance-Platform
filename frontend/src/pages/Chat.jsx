@@ -38,8 +38,8 @@ function Chat() {
 
   return (
     <PageShell
-      title={<>Ask a <span className="serif italic">senior.</span></>}
-      subtitle="Ask anything about interview prep. Answers come from the interview experiences people have shared on Crackd."
+      title={<>Got a doubt? <span className="serif italic">Ask Crackd.</span></>}
+      subtitle="Your prep buddy that has read every interview story on Crackd. Ask the thing you were too shy to ask in class."
       activeTab="chat"
     >
       <div className="mx-auto grid max-w-3xl gap-8">
