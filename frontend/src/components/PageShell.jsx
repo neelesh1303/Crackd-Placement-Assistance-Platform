@@ -7,7 +7,6 @@ const tabs = [
   { id: "companies", label: "Companies", to: "/companies" },
   { id: "roadmap", label: "Roadmap", to: "/roadmap" },
   { id: "progress", label: "Progress", to: "/progress" },
-  { id: "chat", label: "Ask", to: "/chat" },
   { id: "experience", label: "Share story", to: "/add-experience" },
 ];
 

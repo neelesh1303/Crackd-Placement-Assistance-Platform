@@ -13,6 +13,7 @@ import ProgressDashboard from "./pages/ProgressDashboard";
 import RoadmapDetailsPage from "./pages/RoadmapDetailsPage";
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
+import AskFab from "./components/AskFab";
 
 function App() {
   return (
@@ -89,6 +90,7 @@ element={
 />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <AskFab />
     </BrowserRouter>
   );
 }

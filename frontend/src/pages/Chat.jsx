@@ -2,6 +2,7 @@ import { useState } from "react";
 import PageShell from "../components/PageShell";
 import api from "../services/api";
 import { Loader, Notice } from "../components/Bits";
+import Robot from "../components/Robot";
 
 const STARTERS = [
   "How should I prepare binary search for interviews?",
@@ -38,7 +39,15 @@ function Chat() {
 
   return (
     <PageShell
-      title={<>Got a doubt? <span className="serif italic">Ask Crackd.</span></>}
+      title={
+        <>
+          Got a doubt? <span className="serif italic">Ask Crackd bot.</span>
+          <span className="title-bot">
+            <span className="title-bot-hi hand">hi!</span>
+            <Robot size={64} />
+          </span>
+        </>
+      }
       subtitle="Your prep buddy that has read every interview story on Crackd. Ask the thing you were too shy to ask in class."
       activeTab="chat"
     >
