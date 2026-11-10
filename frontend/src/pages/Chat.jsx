@@ -1,7 +1,8 @@
 import { useState } from "react";
 import PageShell from "../components/PageShell";
 import api from "../services/api";
-import { Loader, Notice } from "../components/Bits";
+import { Notice } from "../components/Bits";
+import BotThinking from "../components/BotThinking";
 import Robot from "../components/Robot";
 
 const STARTERS = [
@@ -84,12 +85,12 @@ function Chat() {
               disabled={loading || !question.trim()}
               className="btn btn-ink"
             >
-              {loading ? "Thinking…" : <>Ask <span className="arrow">→</span></>}
+              {loading ? "Crackd is thinking…" : <>Ask <span className="arrow">→</span></>}
             </button>
           </div>
         </form>
 
-        {loading && <Loader label="Flipping through the notes" />}
+        {loading && <BotThinking />}
         {error && <Notice tone="error">{error}</Notice>}
 
         {answer && !loading && (
