@@ -35,7 +35,6 @@ function PageShell({ title, subtitle, activeTab, actions, note, children }) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const currentTab = activeTab || getTabId(location.pathname);
-  const sectionIndex = Math.max(tabs.findIndex((tab) => tab.id === currentTab), 0) + 1;
 
   const handleSignOut = () => {
     logout();
@@ -75,7 +74,7 @@ function PageShell({ title, subtitle, activeTab, actions, note, children }) {
           {note && <p className="margin-note">{note}</p>}
           <div className="min-w-0">
             <span className="kicker">
-              <b>§{String(sectionIndex).padStart(2, "0")}</b> crackd / prep notebook
+              crackd / prep notebook
             </span>
             <h1 className="page-title">{title}</h1>
             {subtitle && <p className="page-sub">{subtitle}</p>}

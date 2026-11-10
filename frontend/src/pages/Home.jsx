@@ -134,7 +134,7 @@ const Home = () => {
 
         <section className="home-hero relative z-10">
           <div className="rise">
-            <span className="kicker"><b>§00</b> placement season survival kit</span>
+            <span className="kicker">placement season survival kit</span>
             <h1 className="display mt-6">
               Crack the <span className="hl hl-draw">interview</span>,
               <br />
@@ -214,7 +214,7 @@ const Home = () => {
       <section className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <span className="kicker"><b>§</b> contents</span>
+            <span className="kicker">contents</span>
             <h2 className="mt-4 text-5xl font-extrabold leading-none tracking-tighter">
               What's in the <span className="serif italic">notebook</span>
             </h2>

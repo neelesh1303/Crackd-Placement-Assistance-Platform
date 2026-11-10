@@ -353,7 +353,7 @@ function RoadmapGenerator() {
           <section className="space-y-8 border-t-[1.5px] border-dashed border-[color:var(--ink)] pt-10">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <span className="kicker"><b>§</b> your roadmap</span>
+                <span className="kicker">your roadmap</span>
                 <h2 className="mt-2 text-4xl font-extrabold tracking-tight">
                   {roadmap.meta.company} <span className="serif italic">· {roadmap.meta.role}</span>
                 </h2>

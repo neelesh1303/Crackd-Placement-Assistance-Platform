@@ -9,7 +9,7 @@ function AuthLayout({ kicker, title, aside, children }) {
       </header>
       <main className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-6 lg:grid-cols-[1fr_0.95fr] lg:px-8 lg:pt-12">
         <section className="rise">
-          <span className="kicker"><b>§</b> {kicker}</span>
+          <span className="kicker">{kicker}</span>
           <h1 className="display mt-5">{title}</h1>
           <div className="mt-8">{aside}</div>
         </section>
