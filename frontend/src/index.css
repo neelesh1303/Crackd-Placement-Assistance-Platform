@@ -679,6 +679,20 @@
 	.md-code { padding: 0.05em 0.35em; border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent); border-radius: 4px; background: var(--paper-2); font-family: var(--font-mono); font-size: 0.86em; }
 	.md-list { margin-bottom: 0; padding: 0; list-style: none; }
 	.md-li { display: flex; gap: 0.65rem; padding: 0.2rem 0 0.2rem calc(var(--lvl, 0) * 1.6rem); }
+	/* blinking highlighter caret at the end of a streaming answer */
+	.is-streaming .md > p:last-child::after,
+	.is-streaming .md > h3:last-child > span::after,
+	.is-streaming .md > ul:last-child > li:last-child > span:last-child::after {
+		content: "";
+		display: inline-block;
+		width: 0.55em;
+		height: 1.05em;
+		margin-left: 0.15em;
+		vertical-align: -0.15em;
+		background: var(--hi);
+		border-left: 2px solid var(--ink);
+		animation: caretBlink 900ms steps(2, start) infinite;
+	}
 	.md-marker { flex-shrink: 0; min-width: 1rem; font-family: var(--font-mono); font-weight: 700; color: var(--red); }
 
 	/* ---- entrance motion ---- */
@@ -920,6 +934,7 @@
 @keyframes dotBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
 @keyframes stepIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
 
+@keyframes caretBlink { to { visibility: hidden; } }
 @keyframes wave { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(22deg); } }
 @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
 @keyframes bulb { 0%, 100% { fill: var(--hi); } 50% { fill: #fff3b0; } }

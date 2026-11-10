@@ -22,6 +22,61 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// ---------------------------------------------------------------------------
+// In-memory caches (per server process) — keep the chat fast.
+// Knowledge chunks / companies are reloaded at most every CACHE_TTL_MS, and
+// cleared whenever an experience is (re)indexed.
+// ---------------------------------------------------------------------------
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const ANSWER_TTL_MS = 10 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 200;
+
+let chunkCache = { data: null, at: 0 };
+let companyCache = { data: null, at: 0 };
+const embeddingCache = new Map(); // normalized question -> embedding
+const answerCache = new Map(); // normalized question -> { value, at }
+
+function normalizeQuestion(question) {
+  return String(question || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function rememberInMap(map, key, value) {
+  if (map.size >= MAX_CACHE_ENTRIES) map.delete(map.keys().next().value); // drop oldest
+  map.set(key, value);
+}
+
+function invalidateKnowledgeCache() {
+  chunkCache = { data: null, at: 0 };
+  companyCache = { data: null, at: 0 };
+  answerCache.clear();
+}
+
+async function getKnowledgeChunks() {
+  if (chunkCache.data && Date.now() - chunkCache.at < CACHE_TTL_MS) return chunkCache.data;
+  const data = await KnowledgeChunk.find().select("title content source embedding").lean();
+  chunkCache = { data, at: Date.now() };
+  return data;
+}
+
+async function getCompanies() {
+  if (companyCache.data && Date.now() - companyCache.at < CACHE_TTL_MS) return companyCache.data;
+  const data = await Company.find().select("name slug").lean();
+  companyCache = { data, at: Date.now() };
+  return data;
+}
+
+function getCachedAnswer(question) {
+  const key = normalizeQuestion(question);
+  const hit = answerCache.get(key);
+  if (hit && Date.now() - hit.at < ANSWER_TTL_MS) return hit.value;
+  if (hit) answerCache.delete(key);
+  return null;
+}
+
+function cacheAnswer(question, value) {
+  rememberInMap(answerCache, normalizeQuestion(question), { value, at: Date.now() });
+}
+
 async function callGemini(path, body, { maxRetries = 1, timeoutMs = getGeminiTimeoutMs() } = {}) {
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
@@ -199,6 +254,7 @@ async function syncAllExperiences() {
         { upsert: true, new: true }
       );
     }
+    invalidateKnowledgeCache();
   } catch (err) {
     console.warn(`[ragService] syncAllExperiences error: ${err.message}`);
   }
@@ -226,6 +282,7 @@ async function indexSingleExperience(exp) {
       { title, content: text, source, ...(embedding.length ? { embedding } : {}) },
       { upsert: true, new: true }
     );
+    invalidateKnowledgeCache();
   } catch (error) {
     console.warn(`[ragService] Failed to index single experience: ${error.message}`);
   }
@@ -251,7 +308,7 @@ function cosineSimilarity(first, second) {
 async function findKeywordMatches(question) {
   try {
     const normalized = question.toLowerCase();
-    const companies = await Company.find().select("name slug").lean();
+    const companies = await getCompanies();
 
     const matchedCompanies = companies.filter((c) => {
       const name = (c.name || "").toLowerCase();
@@ -284,11 +341,11 @@ async function findKeywordMatches(question) {
 
 async function retrieveContext(question, limit = 4, minSimilarity = 0.52) {
   try {
-    let chunks = await KnowledgeChunk.find().select("title content source embedding").lean();
+    let chunks = await getKnowledgeChunks();
 
     if (!chunks || !chunks.length) {
       await syncAllExperiences();
-      chunks = await KnowledgeChunk.find().select("title content source embedding").lean();
+      chunks = await getKnowledgeChunks();
     }
 
     let semanticResults = [];
@@ -296,7 +353,12 @@ async function retrieveContext(question, limit = 4, minSimilarity = 0.52) {
     try {
       const validChunks = (chunks || []).filter((chunk) => Array.isArray(chunk.embedding) && chunk.embedding.length > 0);
       if (validChunks.length) {
-        const questionEmbedding = await createGeminiEmbedding(question, "RETRIEVAL_QUERY");
+        const embeddingKey = normalizeQuestion(question);
+        let questionEmbedding = embeddingCache.get(embeddingKey);
+        if (!questionEmbedding) {
+          questionEmbedding = await createGeminiEmbedding(question, "RETRIEVAL_QUERY");
+          rememberInMap(embeddingCache, embeddingKey, questionEmbedding);
+        }
 
         const scoredChunks = validChunks
           .map((chunk) => ({
@@ -335,10 +397,15 @@ async function retrieveContext(question, limit = 4, minSimilarity = 0.52) {
   }
 }
 
-async function generateAnswer(body) {
+// The model that last worked is tried first next time, so a broken primary model
+// doesn't cost a failed round-trip on every question.
+let preferredModel = null;
+
+function getCandidateModels() {
   const configured = getGeminiModel();
-  const candidateModels = [
+  return [
     ...new Set([
+      preferredModel,
       configured,
       "gemini-3.5-flash",
       "gemini-flash-latest",
@@ -347,27 +414,38 @@ async function generateAnswer(body) {
       "gemini-2.5-flash",
     ].filter(Boolean)),
   ];
+}
 
+function withoutThinking(body) {
+  return {
+    ...body,
+    generationConfig: {
+      ...body.generationConfig,
+      thinkingConfig: undefined,
+    },
+  };
+}
+
+function isBadRequest(err) {
+  return err.message.includes("400") || err.message.includes("INVALID_ARGUMENT");
+}
+
+async function generateAnswer(body) {
   let lastError;
 
-  for (const model of candidateModels) {
+  for (const model of getCandidateModels()) {
     try {
       const res = await callGemini(`models/${encodeURIComponent(model)}:generateContent`, body);
+      preferredModel = model;
       return res;
     } catch (err) {
       lastError = err;
       console.warn(`[ragService] Model '${model}' generateContent failed: ${err.message}`);
 
-      if (body?.generationConfig?.thinkingConfig && (err.message.includes("400") || err.message.includes("INVALID_ARGUMENT"))) {
+      if (body?.generationConfig?.thinkingConfig && isBadRequest(err)) {
         try {
-          const bodyWithoutThinking = {
-            ...body,
-            generationConfig: {
-              ...body.generationConfig,
-              thinkingConfig: undefined,
-            },
-          };
-          const res = await callGemini(`models/${encodeURIComponent(model)}:generateContent`, bodyWithoutThinking);
+          const res = await callGemini(`models/${encodeURIComponent(model)}:generateContent`, withoutThinking(body));
+          preferredModel = model;
           return res;
         } catch (retryErr) {
           lastError = retryErr;
@@ -398,70 +476,225 @@ function extractAnswerText(data) {
     .trim();
 }
 
-async function answerQuestion(question) {
-  const relevantChunks = await retrieveContext(question);
+const NO_DATA_ANSWER = "I don't have data related to this in my interview knowledge base.";
 
-  if (!relevantChunks || relevantChunks.length === 0) {
-    return {
-      answer: "I don't have data related to this in my interview knowledge base.",
-      sources: [],
-    };
-  }
+const SYSTEM_PROMPT = `You are Crackd bot, a friendly placement-prep assistant for college students. Answer the user question using ONLY the provided interview context.
 
+Strict Rules:
+1. If the provided context contains the relevant interview information (e.g. what a company asked, rounds, topics, problems, tips), give a clear, helpful answer grounded strictly in the context.
+2. If the user asks about something that is NOT found in the provided context (e.g., general CS theory like "what is computer networks", unrelated subjects, or companies not in context), you MUST respond with exactly: "${NO_DATA_ANSWER}"
+3. Do not invent or hallucinate facts outside the provided context.
+
+Formatting (Markdown):
+- Start with one short sentence that directly answers the question.
+- Use "### " headings only when the answer has 2 or more distinct parts.
+- Use "- " bullets; nest sub-points with two spaces. Put the label in bold, e.g. "- **Duration:** 60 minutes".
+- Use \`backticks\` for problem names, *italics* sparingly.
+- No tables, no horizontal rules, no closing summary or sign-off.
+- Keep it tight: about 200 words at most.`;
+
+function buildAnswerRequest(question, relevantChunks) {
   const contextText = relevantChunks
     .map((chunk, index) => `[Source ${index + 1}: ${chunk.source}]\n${chunk.content}`)
     .join("\n\n");
 
-  const data = await generateAnswer({
+  return {
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 800,
+      // grounded Q&A doesn't need the model's thinking pass — skipping it cuts latency a lot
+      thinkingConfig: { thinkingBudget: 0 },
     },
-    systemInstruction: {
-      parts: [
-        {
-          text: `You are Crackd's placement preparation assistant. Answer the user question using ONLY the provided interview context.
-
-Strict Rules:
-1. If the provided context contains the relevant interview information (e.g. what a company asked, rounds, topics, problems, tips), provide a clear, structured, and helpful answer grounded strictly in the context.
-2. If the user asks about something that is NOT found in the provided context (e.g., general CS theory like "what is computer networks", unrelated subjects, or companies not in context), you MUST respond with: "I don't have data related to this in my interview knowledge base."
-3. Do not invent or hallucinate facts outside the provided context.`,
-        },
-      ],
-    },
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents: [
       {
         role: "user",
-        parts: [
-          {
-            text: `Retrieved Context:\n${contextText}\n\nUser Question:\n${question}`,
-          },
-        ],
+        parts: [{ text: `Retrieved Context:\n${contextText}\n\nUser Question:\n${question}` }],
       },
     ],
-  });
+  };
+}
+
+function isRefusal(answer) {
+  return /i (don't|do not) have data related to this/i.test(answer);
+}
+
+function buildSources(answer, relevantChunks) {
+  if (isRefusal(answer)) return [];
+  return relevantChunks.map((chunk) => ({
+    title: chunk.title,
+    source: chunk.source,
+    score: typeof chunk.score === "number" ? Number(chunk.score.toFixed(3)) : null,
+  }));
+}
+
+async function answerQuestion(question) {
+  const cached = getCachedAnswer(question);
+  if (cached) return cached;
+
+  const relevantChunks = await retrieveContext(question);
+
+  if (!relevantChunks || relevantChunks.length === 0) {
+    return { answer: NO_DATA_ANSWER, sources: [] };
+  }
+
+  const data = await generateAnswer(buildAnswerRequest(question, relevantChunks));
 
   const answer = extractAnswerText(data);
   if (!answer) {
     throw new Error("Gemini returned an empty answer");
   }
 
-  const isRefusal = /i don't have data related to this/i.test(answer) || /i do not have data related to this/i.test(answer);
+  const result = { answer, sources: buildSources(answer, relevantChunks) };
+  cacheAnswer(question, result);
+  return result;
+}
 
-  return {
-    answer,
-    sources: isRefusal
-      ? []
-      : relevantChunks.map((chunk) => ({
-          title: chunk.title,
-          source: chunk.source,
-          score: typeof chunk.score === "number" ? Number(chunk.score.toFixed(3)) : null,
-        })),
+// ---------------------------------------------------------------------------
+// Streaming: sends the answer to the client as Gemini writes it.
+// ---------------------------------------------------------------------------
+
+// Opens a Gemini SSE stream for one model. Resolves once the response headers arrive.
+async function openGeminiStream(model, body, timeoutMs) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is missing from environment variables");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      }
+    );
+    if (!response.ok) {
+      const raw = await response.text();
+      clearTimeout(timeout);
+      throw new Error(`Gemini error ${response.status}: ${raw.slice(0, 400)}`);
+    }
+    return { response, controller, timeout };
+  } catch (error) {
+    clearTimeout(timeout);
+    if (error.name === "AbortError") throw new Error(`Gemini request timed out after ${timeoutMs}ms`);
+    throw error;
+  }
+}
+
+async function openStreamWithFallback(body) {
+  let lastError;
+  for (const model of getCandidateModels()) {
+    try {
+      const stream = await openGeminiStream(model, body, getGeminiTimeoutMs());
+      preferredModel = model;
+      return stream;
+    } catch (err) {
+      lastError = err;
+      console.warn(`[ragService] Model '${model}' stream failed: ${err.message}`);
+      if (body?.generationConfig?.thinkingConfig && isBadRequest(err)) {
+        try {
+          const stream = await openGeminiStream(model, withoutThinking(body), getGeminiTimeoutMs());
+          preferredModel = model;
+          return stream;
+        } catch (retryErr) {
+          lastError = retryErr;
+        }
+      }
+    }
+  }
+  throw lastError || new Error("All Gemini generation candidate models failed");
+}
+
+// Reads Gemini's SSE body and calls onText for every text delta. Returns the full text.
+async function readGeminiStream({ response, controller, timeout }, onText) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let full = "";
+
+  const handleEvent = (rawEvent) => {
+    const dataLines = rawEvent
+      .split("\n")
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trim());
+    if (!dataLines.length) return;
+    let payload;
+    try {
+      payload = JSON.parse(dataLines.join(""));
+    } catch {
+      return;
+    }
+    const parts = payload?.candidates?.[0]?.content?.parts || [];
+    const text = parts
+      .filter((part) => !part.thought && typeof part.text === "string")
+      .map((part) => part.text)
+      .join("");
+    if (text) {
+      full += text;
+      onText(text);
+    }
   };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary !== -1) {
+        handleEvent(buffer.slice(0, boundary));
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf("\n\n");
+      }
+    }
+    if (buffer.trim()) handleEvent(buffer);
+  } catch (error) {
+    if (error.name === "AbortError") throw new Error("Gemini stream timed out");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    controller.abort();
+  }
+
+  return full.trim();
+}
+
+// emit(event, data): event is "delta" ({ text }) or "done" ({ answer, sources })
+async function answerQuestionStream(question, emit) {
+  const cached = getCachedAnswer(question);
+  if (cached) {
+    emit("delta", { text: cached.answer });
+    emit("done", cached);
+    return;
+  }
+
+  const relevantChunks = await retrieveContext(question);
+  if (!relevantChunks || relevantChunks.length === 0) {
+    const result = { answer: NO_DATA_ANSWER, sources: [] };
+    emit("delta", { text: result.answer });
+    emit("done", result);
+    return;
+  }
+
+  const stream = await openStreamWithFallback(buildAnswerRequest(question, relevantChunks));
+  const answer = await readGeminiStream(stream, (text) => emit("delta", { text }));
+  if (!answer) {
+    throw new Error("Gemini returned an empty answer");
+  }
+
+  const result = { answer, sources: buildSources(answer, relevantChunks) };
+  cacheAnswer(question, result);
+  emit("done", result);
 }
 
 module.exports = {
   answerQuestion,
+  answerQuestionStream,
   createGeminiEmbedding,
   generateGeminiContent: generateAnswer,
   extractAnswerText,

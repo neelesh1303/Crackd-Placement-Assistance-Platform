@@ -1,6 +1,6 @@
 import { useState } from "react";
 import PageShell from "../components/PageShell";
-import api from "../services/api";
+import api, { streamChat } from "../services/api";
 import { Notice } from "../components/Bits";
 import BotThinking from "../components/BotThinking";
 import MarkdownNote from "../components/MarkdownNote";
@@ -27,17 +27,40 @@ function Chat() {
 
     setLoading(true);
     setError("");
+    setAnswer("");
+    setSources([]);
     setAsked(trimmedQuestion);
+
+    let received = false;
     try {
-      const response = await api.post("/chat", { question: trimmedQuestion });
-      setAnswer(response.data.answer || "No answer was returned.");
-      setSources(response.data.sources || []);
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || "Could not reach the assistant.");
+      // stream the answer so words appear as soon as the model writes them
+      const result = await streamChat(trimmedQuestion, {
+        onDelta: (text) => {
+          received = true;
+          setAnswer((prev) => prev + text);
+        },
+      });
+      setAnswer(result.answer || "No answer was returned.");
+      setSources(result.sources || []);
+    } catch (streamError) {
+      if (!received && streamError.canFallback) {
+        // streaming not available — fall back to the plain endpoint
+        try {
+          const response = await api.post("/chat", { question: trimmedQuestion });
+          setAnswer(response.data.answer || "No answer was returned.");
+          setSources(response.data.sources || []);
+        } catch (requestError) {
+          setError(requestError.response?.data?.message || "Could not reach the assistant.");
+        }
+      } else {
+        setError(streamError.message || "Could not reach the assistant.");
+      }
     } finally {
       setLoading(false);
     }
   }
+
+  const streaming = loading && Boolean(answer);
 
   return (
     <PageShell
@@ -91,16 +114,21 @@ function Chat() {
           </div>
         </form>
 
-        {loading && <BotThinking />}
+        {loading && !answer && <BotThinking />}
         {error && <Notice tone="error">{error}</Notice>}
 
-        {answer && !loading && (
-          <section className="sheet sheet-pad rise">
+        {answer && (
+          <section className="sheet sheet-pad rise" aria-busy={streaming}>
             {asked && (
               <p className="hand mb-5 text-2xl text-[color:var(--blue)]">Q: {asked}</p>
             )}
-            <p className="kicker mb-3"><b>A.</b> answer</p>
-            <MarkdownNote text={answer} />
+            <p className="kicker mb-3">
+              <b>A.</b> answer
+              {streaming && <span className="hand normal-case tracking-normal text-[color:var(--blue)]">— writing…</span>}
+            </p>
+            <div className={streaming ? "is-streaming" : ""}>
+              <MarkdownNote text={answer} />
+            </div>
             {sources.length > 0 && (
               <div className="mt-8 border-t border-dashed border-[color:var(--ink-3)] pt-5">
                 <p className="kicker mb-3">Sources it read</p>
