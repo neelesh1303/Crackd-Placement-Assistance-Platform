@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom"; //useNavigate hook se successful login ke baad user ko programmatically "/dashboard" par bhej dete hain.
+import { Link, useNavigate } from "react-router-dom"; //useNavigate hook se successful login ke baad user ko programmatically "/dashboard" par bhej dete hain.
 import api from "../services/api";
 import { useAuth } from "../context/useAuth";
 import AuthLayout from "../components/AuthLayout";
@@ -7,8 +7,6 @@ import { Notice } from "../components/Bits";
 
 function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const redirectTo = location.state?.from?.pathname || "/dashboard"; // page the user tried to open before being sent to login
   const { login } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" }); //form state: jab user input karega to handleChange ke through update hota rahega.
   const [error, setError] = useState("");
@@ -31,7 +29,7 @@ function Login() {
       setLoading(true);
       const res = await api.post("/auth/login", form);
       login(res.data);
-      navigate(redirectTo, { replace: true });
+      navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     } finally {
