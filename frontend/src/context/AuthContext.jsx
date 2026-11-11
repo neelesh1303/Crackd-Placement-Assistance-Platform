@@ -30,6 +30,7 @@ export const AuthProvider = ({ children }) => { //wrapper function. provides dat
         return;
       }
       const res = await api.get("/auth/me");
+      if (!res.data?.user) throw new Error("No user for this token");
       setUser(res.data.user);
     } catch { // agar error aata hai to logout kar denge, taki user ko dobara login karna pade.
       setToken("");

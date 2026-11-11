@@ -95,6 +95,10 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => { //Ek route handler (controller function). this function return data of current logged in user
   try {
     const user = await User.findById(req.user.id);
+    if (!user) {
+      // Token is validly signed but its account no longer exists — treat as logged out.
+      return res.status(401).json({ message: "User no longer exists" });
+    }
     res.status(200).json({
       success: true,
       user,
