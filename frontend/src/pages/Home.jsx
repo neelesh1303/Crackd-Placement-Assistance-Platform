@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Logo from "../components/Logo";
 import PencilTrail from "../components/PencilTrail";
+import { useAuth } from "../context/useAuth";
 
 const TOPICS = [
   "Arrays", "Sliding Window", "Binary Search", "Graphs", "Dynamic Programming", "DBMS",
@@ -79,6 +80,8 @@ const INITIAL_TODOS = [
 
 const Home = () => {
   const rootRef = useRef(null);
+  const { token, user, logout } = useAuth();
+  const isLoggedIn = Boolean(token && user); // server-verified session only
   const score = useCountUp(78);
   const [todos, setTodos] = useState(INITIAL_TODOS);
   const [touched, setTouched] = useState(false); // after the first click, strikes draw instantly
@@ -114,8 +117,17 @@ const Home = () => {
       <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 lg:px-8">
         <Logo />
         <div className="flex items-center gap-4">
-          <Link to="/login" className="link-ink text-sm">Log in</Link>
-          <Link to="/register" className="btn btn-sm btn-hi hidden sm:inline-flex">Get started</Link>
+          {isLoggedIn ? (
+            <>
+              <button type="button" onClick={logout} className="link-ink text-sm">Log out</button>
+              <Link to="/dashboard" className="btn btn-sm btn-hi hidden sm:inline-flex">Open dashboard</Link>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="link-ink text-sm">Log in</Link>
+              <Link to="/register" className="btn btn-sm btn-hi hidden sm:inline-flex">Get started</Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -224,7 +236,13 @@ const Home = () => {
           </div>
           <div className="border-t-[1.5px] border-[color:var(--ink)]">
             {CONTENTS.map((item) => (
-              <Link key={item.no} to={item.to} className="index-row">
+              <Link
+                key={item.no}
+                // Logged-out visitors go to login first, then land on the section they picked.
+                to={isLoggedIn ? item.to : "/login"}
+                state={isLoggedIn ? undefined : { from: { pathname: item.to } }}
+                className="index-row"
+              >
                 <span className="num">{item.no}</span>
                 <span>
                   <span className="block text-xl font-extrabold tracking-tight">{item.title}</span>
