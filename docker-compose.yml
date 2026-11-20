@@ -1,0 +1,23 @@
+# Run the whole app with one command:  docker compose up --build
+# Then open http://localhost:3000
+
+services:
+  redis:
+    image: redis:7-alpine
+
+  backend:
+    build: ./backend
+    env_file: ./backend/.env        # your Mongo Atlas URI, JWT secret, Gemini key
+    environment:
+      REDIS_URL: redis://redis:6379 # talk to the redis container by its name
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"                   # localhost:3000 -> nginx inside container
+    depends_on:
+      - backend
