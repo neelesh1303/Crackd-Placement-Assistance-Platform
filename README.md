@@ -296,32 +296,6 @@ On pushes to `main` and pull requests targeting `main`, CI:
 
 On pushes to `main` only, the images are pushed to Docker Hub as `<user>/crackd-backend` and `<user>/crackd-frontend`, tagged `latest` and with the commit SHA. Pull requests only build the images. Pushing requires the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` repository secrets.
 
-## Continuous deployment
-
-After the Docker images are pushed, the `deploy` job in `ci.yml` deploys them to a Linux server over SSH (pushes to `main` only):
-
-1. Copies `docker-compose.prod.yml` to `~/crackd` on the server.
-2. Pulls the images tagged with the commit SHA and restarts the containers with `docker compose up -d`.
-3. Prunes old images and checks `http://localhost/api/health`, failing the job (and printing backend logs) if the API doesn't come up within about 60 seconds.
-
-If the `SERVER_HOST` secret is not set, the job is skipped with a notice, so CI still passes.
-
-### One-time server setup
-
-1. Create a Linux VM (for example AWS EC2 or a DigitalOcean droplet) and open port `80`.
-2. Install Docker and the Docker Compose plugin, and let the SSH user run `docker` (`sudo usermod -aG docker $USER`).
-3. Create `~/crackd/backend.env` with the backend variables (`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_EMBEDDING_MODEL`, ...). It never goes in the repo.
-4. If the Docker Hub repositories are private, run `docker login` on the server once.
-5. Generate a deploy key pair, add the public key to the server's `~/.ssh/authorized_keys`, and add these GitHub repository secrets:
-
-| Secret | Value |
-|---|---|
-| `SERVER_HOST` | Server IP or hostname |
-| `SERVER_USER` | SSH user, e.g. `ubuntu` |
-| `SERVER_SSH_KEY` | The private deploy key |
-
-The app is then served on port `80` of the server. To roll back, re-run the workflow for an earlier commit, which redeploys that commit's image tag.
-
 ## Deployment
 
 The Docker images pushed by CI can be run on any host with Docker (pull them and run them with a compose file like `docker-compose.yml`, using `image:` instead of `build:`). Alternatively, deploy the frontend and backend as separate services:
