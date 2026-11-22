@@ -9,7 +9,7 @@ Crackd is a MERN application for placement preparation. Students can explore com
 - **Interview experiences:** browse and submit interview experiences with rounds, questions, topics, tips, resources, and offer outcomes.
 - **AI roadmaps:** generate a weekly study plan with Google Gemini using the target role, company, preparation duration, available hours, and selected strong/weak topics. If Gemini is not configured or generation fails, the API returns a template roadmap.
 - **Progress tracking:** save one active roadmap per user, update checklist status, and view readiness and study streak information.
-- **Preparation assistant:** ask questions about indexed interview experiences. Answers include source details when relevant data is available.
+- **Preparation assistant:** ask questions about indexed interview experiences. Answers stream in live as they are written and include source details when relevant data is available.
 - **Analytics and problem APIs:** backend endpoints expose experience analytics and interview-problem data.
 
 ## Technology
@@ -22,7 +22,8 @@ Crackd is a MERN application for placement preparation. Students can explore com
 | AI | Google Gemini API for roadmap generation, text generation, and embeddings |
 | Optional cache | Redis |
 | Testing | Node.js `node:test`, Jest, Supertest |
-| CI | GitHub Actions |
+| Containers | Docker, Docker Compose, nginx (serves the frontend and proxies `/api`) |
+| CI | GitHub Actions (tests, then builds and pushes Docker images to Docker Hub) |
 
 ## Application structure
 
@@ -41,6 +42,7 @@ Crackd is a MERN application for placement preparation. Students can explore com
 │   │   ├── app.js           # Express app, exported for tests
 │   │   └── server.js        # Database/cache connections and listener
 │   ├── test/                # Unit and API integration tests
+│   ├── Dockerfile
 │   ├── .env.example
 │   ├── package.json
 │   └── package-lock.json
@@ -50,9 +52,12 @@ Crackd is a MERN application for placement preparation. Students can explore com
 │   │   ├── context/
 │   │   ├── pages/
 │   │   └── services/api.js
+│   ├── Dockerfile           # Multi-stage: Vite build, then nginx
+│   ├── nginx.conf           # Serves the React app and proxies /api to the backend
 │   ├── .env.example
 │   ├── package.json
 │   └── package-lock.json
+├── docker-compose.yml       # Runs redis + backend + frontend together
 └── README.md
 ```
 
@@ -75,7 +80,7 @@ Protected routes:
 - `/roadmap-details/:companySlug` — view saved roadmap details
 - `/chat` — AI preparation assistant
 
-The frontend stores the JWT in `localStorage` and attaches it as a Bearer token to API requests. In development, the API defaults to `http://localhost:5000/api`; configure `VITE_API_BASE_URL` to point to another backend.
+The frontend stores the JWT in `localStorage` and attaches it as a Bearer token to API requests. In development, the API defaults to `http://localhost:5000/api`; in production builds it defaults to the relative `/api` path (which nginx proxies to the backend in the Docker setup). Configure `VITE_API_BASE_URL` to point to another backend.
 
 ## Backend API
 
@@ -105,6 +110,7 @@ Authorization: Bearer <JWT>
 | `GET` | `/api/tracker/readiness` | Protected | Get readiness details |
 | `GET` | `/api/analytics/summary` | Protected | Get experience analytics |
 | `POST` | `/api/chat` | Protected | Ask the preparation assistant a question |
+| `POST` | `/api/chat/stream` | Protected | Same as `/api/chat`, but streams the answer with Server-Sent Events |
 
 ### Generate a roadmap
 
@@ -135,6 +141,14 @@ The response includes roadmap metadata, a `weeklyPlan`, a `checklist`, and `sour
 
 The question is required and limited to 1,000 characters. The response contains an answer and any retrieved sources.
 
+`POST /api/chat/stream` takes the same body and responds with `text/event-stream`. It emits:
+
+- `delta` — `{ "text": "..." }`, the next piece of the answer
+- `done` — `{ "answer": "...", "sources": [...] }`, the complete answer
+- `error` — `{ "message": "..." }`
+
+The frontend uses the stream and falls back to `POST /api/chat` if streaming is unavailable.
+
 ## AI and retrieval
 
 Roadmap generation and the preparation assistant use the existing Gemini service configuration:
@@ -147,7 +161,7 @@ When a new interview experience is submitted, the backend attempts to index it i
 
 For chat questions, the service compares query embeddings with stored experience embeddings using cosine similarity. If semantic results are unavailable, it can look for experiences belonging to a company explicitly mentioned in the question. Gemini is used to formulate an answer from the retrieved context; if no context is found, the assistant reports that it has no matching interview knowledge.
 
-The roadmap generator keeps successful responses in an in-memory cache for 10 minutes. Company-list results can be cached in Redis. Redis is optional: the backend continues without it if the connection is unavailable.
+The chat pipeline caches knowledge chunks and companies in memory for 5 minutes (cleared whenever a new experience is indexed), and also caches question embeddings and answers to repeated questions. The roadmap generator keeps successful responses in an in-memory cache for 10 minutes. Company-list results can be cached in Redis. Redis is optional: the backend continues without it if the connection is unavailable.
 
 ## Requirements
 
@@ -217,6 +231,22 @@ npm run dev
 
 Vite prints the local frontend URL in the terminal. To use a non-default backend, set `VITE_API_BASE_URL` in `frontend/.env`; for example, `http://localhost:5000`. The frontend adds `/api` unless the configured URL already ends in `/api`.
 
+## Run with Docker
+
+With Docker installed and `backend/.env` configured (see above), start the whole app from the repository root:
+
+```bash
+docker compose up --build
+```
+
+This starts three containers:
+
+- `redis` — Redis 7 cache
+- `backend` — the Express API on port `5000`, using `backend/.env` and `REDIS_URL=redis://redis:6379`
+- `frontend` — nginx serving the built React app on [http://localhost:3000](http://localhost:3000) and forwarding `/api/` requests to the backend (with buffering off so streamed chat answers arrive live)
+
+MongoDB is not containerised; `MONGO_URI` should point to your MongoDB instance (for example, MongoDB Atlas).
+
 ## Database utilities
 
 Run these commands from `backend/`.
@@ -262,10 +292,13 @@ On pushes to `main` and pull requests targeting `main`, CI:
 2. Runs frontend ESLint and a production build.
 3. Runs backend unit tests and Jest/Supertest API tests as separate steps.
 4. Checks that the backend Express app loads.
+5. After both jobs pass, builds the backend and frontend Docker images.
+
+On pushes to `main` only, the images are pushed to Docker Hub as `<user>/crackd-backend` and `<user>/crackd-frontend`, tagged `latest` and with the commit SHA. Pull requests only build the images. Pushing requires the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` repository secrets.
 
 ## Deployment
 
-Deploy the frontend and backend as separate services or use another compatible deployment setup.
+The Docker images pushed by CI can be run on any host with Docker (pull them and run them with a compose file like `docker-compose.yml`, using `image:` instead of `build:`). Alternatively, deploy the frontend and backend as separate services:
 
 - **Frontend:** set `VITE_API_BASE_URL` to the public backend URL. The frontend appends `/api` automatically unless it is already present.
 - **Backend:** configure `MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, `GEMINI_MODEL`, and `GEMINI_EMBEDDING_MODEL` in the hosting platform's secret/environment settings. `PORT` is typically provided by the host.
